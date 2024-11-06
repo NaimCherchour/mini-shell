@@ -4,8 +4,10 @@ Shell written in C
 ## Quick Start
 
 ```sh
-make
+make run
 ```
+> [TIP]
+> To see other available target, use `make help`
 
 
 
