@@ -34,4 +34,5 @@ clean:
 	rm -f $(EXEC)
 
 run: $(EXEC)
-	./$(EXEC)
+	@clear
+	@./$(EXEC)
