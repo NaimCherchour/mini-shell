@@ -32,3 +32,6 @@ $(REPOBJ):
 clean:
 	rm -rf $(REPOBJ)
 	rm -f $(EXEC)
+
+run: $(EXEC)
+	./$(EXEC)
