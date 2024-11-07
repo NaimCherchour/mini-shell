@@ -98,9 +98,17 @@ int main() {
     //clear the screen
     printf("\033[H\033[J");
 
+    int status[] = {102, 115, 104, 101, 108, 108, 32, 91, 102, 115, 104, 93, 36, 194, 169, 32, 118, 48, 46, 48, 46, 49, 32, 119, 114, 105, 116, 116, 101, 110, 32, 98, 121, 32, 89, 97, 99, 105, 110, 101, 46, 32, 87, 101, 108, 99, 111, 109, 101, 33};
+    
 
+    
     char* prompt;
+    
 
+    for (int i = 0; i < sizeof(status) / sizeof(status[0]); i++) {
+        printf("%c", status[i]);
+    }
+    printf("\n");
     while ((prompt = readline("[fsh]$ ")) != NULL) {
         // Exit the shell
         if (strcmp(prompt, "fin") == 0) {
