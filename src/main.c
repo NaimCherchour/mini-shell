@@ -98,28 +98,60 @@ int main() {
     //clear the screen
     printf("\033[H\033[J");
 
-    int status[] = {102, 115, 104, 101, 108, 108, 32, 91, 102, 115, 104, 93, 36, 194, 169, 32, 118, 48, 46, 48, 46, 49, 32, 119, 114, 105, 116, 116, 101, 110, 32, 98, 121, 32, 89, 97, 99, 105, 110, 101, 46, 32, 87, 101, 108, 99, 111, 109, 101, 33};
-    
 
-    
+    int status[] = {70, 111, 114, 115, 104, 101, 108, 108, 32, 91, 102, 115, 104, 93, 194, 169, 32, 118, 48, 46, 48, 46, 49, 13};
     char* prompt;
+    char cwd[1024];
     
 
     for (int i = 0; i < sizeof(status) / sizeof(status[0]); i++) {
         printf("%c", status[i]);
     }
     printf("\n");
-    while ((prompt = readline("[fsh]$ ")) != NULL) {
-        // Exit the shell
-        if (strcmp(prompt, "fin") == 0) {
-            free(prompt);
-            break;
+
+    
+    // print the date and time
+    pid_t pid = fork();
+
+    if (pid == 0) {
+        // Child process
+        execlp("date", "date", NULL);
+        exit(EXIT_FAILURE);
+    } else if (pid > 0) {
+        // Parent process
+        wait(NULL);
+    } else {
+        // Fork failed
+        perror("fork");
+    }
+
+    printf("\n");
+
+
+
+    // reading the input
+    while (1) {
+        // Get the current working directory
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+            // Create the prompt string
+            char prompt_str[1064];
+            snprintf(prompt_str, sizeof(prompt_str), "[fsh]%s$ ", cwd);
+            prompt = readline(prompt_str);
+        } else {
+            perror("getcwd");
+            exit(EXIT_FAILURE);
         }
 
-        // Add the input to the history list
+        if (prompt == NULL) {
+            break;
+        }
+   
         if (strlen(prompt) > 0) {
+            // Add the input to the history list
             add_history(prompt);
+            // Parse the prompt
             char** command = parse_prompt(prompt);
+            // Handle the command
             handle_command(command);
             free(command);
         }
