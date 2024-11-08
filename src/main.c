@@ -3,6 +3,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <string.h>
+#include <errno.h>
 #include <unistd.h>
 #include <sys/wait.h>
 
@@ -49,12 +50,40 @@ char** parse_prompt(char* prompt) {
 }
 
 void handle_command(char** command) {
-    // Execute external command
     pid_t pid = fork();
+    
     if (pid == 0) {
         // Child process
+
+        // Check if the command is a built-in
+        char* bin_path = "bin/";
+        // Allocate memory for the command path string
+        char* command_path = malloc(strlen(bin_path) + strlen(command[0]) + 1);
+        if (command_path == NULL) {
+            perror("malloc");
+            exit(EXIT_FAILURE);
+        }
+        // Copy the bin path and the command name to the command path string
+        strcpy(command_path, bin_path);
+        strcat(command_path, command[0]);
+
+
+        // Check if the command is a built-in
+        if (access(command_path, X_OK) == 0) {
+            // Execute built-in command
+            if (execv(command_path, command) == -1) {
+                perror("execv");
+                exit(EXIT_FAILURE);
+            }
+        }
+        free(command_path);
+
+        // Execute external command
         execvp(command[0], command);
-        perror("execvp"); // If execvp returns, there was an error
+
+        // If execvp fails then there is no such command
+        perror(command[0]);
+        // printf("`%s` is not recognized as an internal or external command. %s\n", command[0], strerror(errno)); 
         exit(EXIT_FAILURE);
     } else if (pid > 0) {
         // Parent process
@@ -66,8 +95,20 @@ void handle_command(char** command) {
 }
 
 int main() {
-    char* prompt;
+    //clear the screen
+    printf("\033[H\033[J");
 
+    int status[] = {102, 115, 104, 101, 108, 108, 32, 91, 102, 115, 104, 93, 36, 194, 169, 32, 118, 48, 46, 48, 46, 49, 32, 119, 114, 105, 116, 116, 101, 110, 32, 98, 121, 32, 89, 97, 99, 105, 110, 101, 46, 32, 87, 101, 108, 99, 111, 109, 101, 33};
+    
+
+    
+    char* prompt;
+    
+
+    for (int i = 0; i < sizeof(status) / sizeof(status[0]); i++) {
+        printf("%c", status[i]);
+    }
+    printf("\n");
     while ((prompt = readline("[fsh]$ ")) != NULL) {
         // Exit the shell
         if (strcmp(prompt, "fin") == 0) {

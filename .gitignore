@@ -3,3 +3,4 @@ src/fsh
 .vscode/*
 *.o
 fsh
+bin
