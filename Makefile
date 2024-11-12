@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -g
+CFLAGS = -Wall
 CLIBS = -lreadline # Bibliothèque readline
 EXEC = fsh
 
