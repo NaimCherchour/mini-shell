@@ -75,3 +75,14 @@ int ftype(char **args) {
 
     return 0;
 }
+
+int pwd() {
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        printf("%s\n", cwd);  // Affiche le répertoire courant
+        return 0;
+    } else {
+        perror("pwd");  // Affiche une erreur si `getcwd` échoue
+        return 1;
+    }
+}

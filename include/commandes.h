@@ -14,4 +14,8 @@ int cd(char **args);
 //directory, regular file , symbolic link, named pipe, other.
 int ftype(char **args);
 
+int pwd();  // Affiche le répertoire courant
+
+
+
 #endif // COMMANDE_H

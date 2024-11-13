@@ -58,7 +58,12 @@ void handle_command(char** command) {
     } else if ( strcmp ( command[0],"ftype") == 0 ){ // ftype commande interne
         ftype(command);
         return;
+    } else if (strcmp(command[0], "pwd") == 0) { // commande interne pwd
+        pwd();  // Appelle la fonction pwd
+        return;
     }
+
+
     pid_t pid = fork();
     if (pid == 0) {
         // Child process
