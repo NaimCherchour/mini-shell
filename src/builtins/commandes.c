@@ -75,3 +75,28 @@ int ftype(char **args) {
 
     return 0;
 }
+
+int pwd() {
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        printf("%s\n", cwd);  // Affiche le répertoire courant
+        return 0;
+    } else {
+        perror("pwd");  // Affiche une erreur si `getcwd` échoue
+        return 1;
+    }
+}
+
+#include <stdlib.h> // pour EXIT_SUCCESS et EXIT_FAILURE
+#include <stdio.h>  // pour printf
+
+void exit_shell(char **args) {
+    int exit_code = 0; // Code de sortie par défaut
+
+    if (args[1] != NULL) {
+        exit_code = atoi(args[1]); // Convertit le second argument en entier
+    }
+
+    printf("Exiting shell with code %d\n", exit_code);
+    exit(exit_code);
+}
