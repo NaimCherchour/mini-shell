@@ -61,6 +61,9 @@ void handle_command(char** command) {
     } else if (strcmp(command[0], "pwd") == 0) { // commande interne pwd
         pwd();  // Appelle la fonction pwd
         return;
+    } else if (strcmp(command[0], "exit") == 0) {
+        exit_shell(command);  // Appelle la fonction exit_shell
+        return;
     }
 
 
