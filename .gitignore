@@ -3,5 +3,6 @@ src/fsh
 *.o
 fsh
 bin
+test.sh
 .*
 !.git
