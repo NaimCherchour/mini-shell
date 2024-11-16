@@ -1,36 +1,54 @@
+# Compiler and Flags
 CC = gcc
-CFLAGS = -Wall
-CLIBS = -lreadline # Bibliothèque readline
-EXEC = fsh
+CFLAGS = -Wall -Iheaders 
+LDFLAGS = -lreadline
 
-REPSRC = src
-REPINC = include
-REPBIN = bin
+# Directories
+SRC_DIR = src
+LOCALS_DIR = $(SRC_DIR)/locals
+HEADERS_DIR = headers
+BIN_DIR = bin
+OBJ_DIR = obj
 
-# Builtins sources and objects
-BUILTINS_SRC := $(wildcard $(REPSRC)/builtins/*.c)
-BUILTINS_OBJ := $(patsubst $(REPSRC)/builtins/%.c,$(REPBIN)/%,$(BUILTINS_SRC))
+# Output Executable
+TARGET = fsh
 
-INCLUDES = -I$(REPINC)
+# Source Files
+MAIN_SRC = $(SRC_DIR)/main.c
+LOCALS_SRCS = $(wildcard $(LOCALS_DIR)/*.c)
+OTHER_SRCS = $(filter-out $(MAIN_SRC), $(wildcard $(SRC_DIR)/*.c))
 
-all: $(EXEC) $(BUILTINS_OBJ)
+# Object Files
+LOCALS_BINS = $(patsubst $(LOCALS_DIR)/%.c,$(BIN_DIR)/%,$(LOCALS_SRCS))
+OTHER_OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(OTHER_SRCS))
 
-# Compilation de l'exécutable principal
-$(EXEC): $(REPSRC)/main.c
-	$(CC) $(CFLAGS) -o $(EXEC) $(REPSRC)/main.c $(CLIBS) $(INCLUDES)
+# Default Target
+all: $(LOCALS_BINS) $(TARGET)
 
-# Compilation des fichiers objets pour les builtins
-$(REPBIN)/%: $(REPSRC)/builtins/%.c | $(REPBIN)
-	$(CC) $(CFLAGS) -o $@ $< $(CLIBS) $(INCLUDES)
+# Build standalone binaries in bin/
+$(BIN_DIR)/%: $(LOCALS_DIR)/%.c | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
-# Pré-requête d'ordre; Création des répertoires pour les fichiers binaires s'ils n'existent pas
-$(REPBIN):
-	mkdir -p $(REPBIN)
+# Build fsh executable
+$(TARGET): $(OTHER_OBJS) $(MAIN_SRC)
+	$(CC) $(CFLAGS) -o $@ $(MAIN_SRC) $(OTHER_OBJS) $(LDFLAGS)
 
+# Compile src/*.c (except main.c) to obj/
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Create directories if they don't exist
+$(BIN_DIR):
+	mkdir -p $(BIN_DIR)
+
+$(OBJ_DIR):
+	mkdir -p $(OBJ_DIR)
+
+# Clean up build artifacts
 clean:
-	rm -f $(EXEC)
-	rm -f $(REPBIN)/*
+	rm -rf $(BIN_DIR) $(OBJ_DIR) $(TARGET)
 
-run: $(EXEC)
-	@clear
-	@./$(EXEC)
+# Print debug information
+debug:
+	@echo "LOCALS_BINS: $(LOCALS_BINS)"
+	@echo "OTHER_OBJS: $(OTHER_OBJS)"

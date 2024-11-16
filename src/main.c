@@ -7,6 +7,9 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
+#include "internals.h"
+#define PATH_MAX 4096
+
 char** parse_prompt(char* prompt) {
     // Allocate memory for arguments
     char** args = malloc(10 * sizeof(char*)); // max 10 arguments
@@ -50,8 +53,22 @@ char** parse_prompt(char* prompt) {
 }
 
 void handle_command(char** command) {
+    if ( strcmp (command[0],"cd") == 0 ){ // cd commande interne 
+        cd(command);
+        return;
+    } else if ( strcmp ( command[0],"ftype") == 0 ){ // ftype commande interne
+        ftype(command);
+        return;
+    } else if (strcmp(command[0], "pwd") == 0) { // commande interne pwd
+        pwd();  // Appelle la fonction pwd
+        return;
+    } else if (strcmp(command[0], "exit") == 0) {
+        exit_shell(command);  // Appelle la fonction exit_shell
+        return;
+    }
+
+
     pid_t pid = fork();
-    
     if (pid == 0) {
         // Child process
 
@@ -104,7 +121,7 @@ int main() {
     char cwd[1024];
     
 
-    for (int i = 0; i < sizeof(status) / sizeof(status[0]); i++) {
+    for (size_t i = 0; i < sizeof(status) / sizeof(status[0]); i++) {
         printf("%c", status[i]);
     }
     printf("\n");
@@ -136,6 +153,7 @@ int main() {
             // Create the prompt string
             char prompt_str[1064];
             snprintf(prompt_str, sizeof(prompt_str), "[fsh]%s$ ", cwd);
+            rl_outstream = stderr; // L'affichage du prompt de fsh est réalisé sur sa sortie erreur
             prompt = readline(prompt_str);
         } else {
             perror("getcwd");
@@ -159,5 +177,5 @@ int main() {
         free(prompt);
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
