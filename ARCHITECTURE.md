@@ -4,22 +4,22 @@
 ## Structure du dépot :
 
 📦mini-shell  
- ┣ 📂bin ------------------------------------> Contient les binaires executables pour les commandes internes. Géneré apres compilation  
- ┃ ┣ 📜sed   
- ┃ ┣ 📜tr  
- ┃ ┗ 📜wlc  
- ┣ 📂src ------------------------------------> Contient les sources   
- ┃ ┣ 📂builtins  ----------------------------> Contient les sources des commandes internes  
- ┃ ┃ ┣ 📜sed.c  
- ┃ ┃ ┣ 📜tr.c  
- ┃ ┃ ┗ 📜wlc.c  
- ┃ ┗ 📜main.c ------------------------------> source du fsh  
- ┣ 📜.gitignore  
- ┣ 📜ARCHITECTURE.md  
- ┣ 📜AUTHORS.md  
- ┣ 📜Makefile  
- ┣ 📜README.md  
- ┗ 📜fsh ------------------------------------> executable du mini shell. Géneré apres compilation
+ ┣ 📂bin/ ------------------------------------> Contient les binaires executables pour nos versions de commandes externes (locales). Géneré apres compilation  
+ ┃ ┣ my-sed   
+ ┃ ┣ my-tr  
+ ┃ ┗ my-wlc  
+ ┣ 📂src/ ------------------------------------> Contient les sources   
+ ┃ ┣ 📂locals/  ----------------------------> Contient les sources des commandes locales  
+ ┃ ┃ ┣ my-sed.c  
+ ┃ ┃ ┣ my-tr.c  
+ ┃ ┃ ┗ my-wlc.c  
+ ┃ ┣ internals.c ---------------------------> source des commandes internes
+ ┃ ┗ main.c ------------------------------> source du fsh  
+ ┣ ARCHITECTURE.md  
+ ┣ AUTHORS.md  
+ ┣ Makefile  
+ ┣ README.md  
+ ┗ fsh ------------------------------------> executable du mini shell. Géneré apres compilation
 
 
 
@@ -31,18 +31,22 @@
    1. Le mini shell fsh lit une ligne de commande entrée par l'utilisateur.
    2. Il parse ensuite la ligne de commande avec la fonction `parse_command` pour extraire les arguments et les options.
    3. Traiter la commande avec la fonction `handle_command`. <u>ie</u>:  Il vérifie s'il s'agit d'une commande interne ou externe en procedant ainsi:
-      * <b>Priorité aux internes:</b> Recherche si un executable dans le répertoire `bin` portant le meme nom que la commande existe. Si oui, il s'agit d'une commande interne. 
-      * Le cas echeant ,c'est une commande externe, il crée un processus fils pour exécuter la commande externe.
+      1. <b>Priorité aux internes:</b> 
+      2. <b>Recherche de commandes locales: </b>Recherche si un executable dans le répertoire `bin` portant le meme nom que la commande existe. Si oui, il s'agit d'une commande interne. Il crée un processus fils pour exécuter la commande locale.
+      3. <b>Enfin:</b> si on trouve rien, c'est une commande externe. il crée un processus fils pour exécuter la commande externe.
 
 
+
+* ### Implementation des commandes locales :
+   *  `my-sed` : // a completer
+   *  `my-tr` : // a completer
+   * `my-wlc` : // a completer
 
 * ### Implementation des commandes internes :
-   1. **sed, wlc et tr** : Vues au TP3
-
-   2. **exit** : // a completer
-   3. **cd** : // a completer
-   4. **pwd** : // a completer
-   5. **ls** : // a completer
+   *  `exit` : // a completer
+   *  `cd` : // a completer
+   * `pwd` : // a completer
+   * `ftype` : // a completer
 
 
 ## Dépendances et Bibliothèques Externes :
