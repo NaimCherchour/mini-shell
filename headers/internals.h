@@ -1,7 +1,7 @@
-#ifndef COMMANDE_H
-#define COMMANDE_H
+#ifndef INTERNALS_H
+#define INTERNALS_H
 
-#include <limits.h>  // pour PATH_MAX
+#define PATH_MAX 4096
 
 // Déclaration de la variable globale pour le répertoire précédent
 extern char rep_precedent[PATH_MAX]; 

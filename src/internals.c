@@ -3,10 +3,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <limits.h> // pour PATH_MAX ; 4096 caractères
 #include <sys/stat.h>
 
-#include "../include/commandes.h"
+#include "../headers/internals.h"
 
 char rep_precedent[PATH_MAX]; // on sauvegarde le répertoire précédent
 
@@ -86,9 +85,6 @@ int pwd() {
         return 1;
     }
 }
-
-#include <stdlib.h> // pour EXIT_SUCCESS et EXIT_FAILURE
-#include <stdio.h>  // pour printf
 
 void exit_shell(char **args) {
     int exit_code = 0; // Code de sortie par défaut

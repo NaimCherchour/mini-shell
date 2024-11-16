@@ -6,8 +6,9 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/wait.h>
-#include <limits.h> // pour PATH_MAX ; 4096 caractères
-#include "../include/commandes.h"
+
+#include "internals.h"
+#define PATH_MAX 4096
 
 char** parse_prompt(char* prompt) {
     // Allocate memory for arguments
