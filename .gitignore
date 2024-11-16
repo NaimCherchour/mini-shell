@@ -1,6 +1,7 @@
-obj/*
+obj
 src/fsh
-.vscode/*
 *.o
 fsh
 bin
+.*
+!.git
