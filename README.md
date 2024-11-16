@@ -30,21 +30,25 @@ make run
 ## Features
 
 - [x] External commands
+- [x] Local commands
 - [x] Internal commands 
 - [x] Commands history
 - [ ] Special characters
 - [ ] Piping
+- [ ] Redirections
+- [ ] Signals
+- [ ] command structuring
 - [ ] `for` loop
-- [ ] `if` conditional branching
+- [ ] `if else` conditional branching
 ### Shortcuts
 - [x] UP and DOWN arrows (seeking command history)
 - [x] LEFT and RIGHT arrows (moving the current prompt cursor)
 
 ### Builtins
-- [ ] `exit`
-- [ ] `cd`
+- [x] `exit`
+- [x] `cd`
 - [ ] `echo`
-- [ ] `pwd`
+- [x] `pwd`
 - [ ] `ls`
 - [x] `wlc` aka `wc`
 - [x] `tr`

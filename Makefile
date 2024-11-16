@@ -52,3 +52,6 @@ clean:
 debug:
 	@echo "LOCALS_BINS: $(LOCALS_BINS)"
 	@echo "OTHER_OBJS: $(OTHER_OBJS)"
+
+help:
+	@echo "Usage: make [all|clean|debug|help]"
