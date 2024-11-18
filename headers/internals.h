@@ -1,8 +1,6 @@
 #ifndef INTERNALS_H
 #define INTERNALS_H
 
-#define PATH_MAX 4096
-
 // Déclaration de la variable globale pour le répertoire précédent
 extern char rep_precedent[PATH_MAX]; 
 
@@ -20,4 +18,4 @@ int exit_shell(char **args);  // Termine le shell avec un code de sortie
 
 
 
-#endif // COMMANDE_H
+#endif

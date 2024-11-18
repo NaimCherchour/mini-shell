@@ -4,8 +4,12 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <linux/limits.h>
+
 
 #include "../headers/internals.h"
+#include "../headers/prompt.h" // pour utiliser la variable last_status ie valeur de retour 
+
 
 char rep_precedent[PATH_MAX]; // on sauvegarde le répertoire précédent
 
