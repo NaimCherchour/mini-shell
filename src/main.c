@@ -61,18 +61,22 @@ char** parse_prompt(char* prompt) {
 
 void handle_command(char** command) {
 
+    //Ignorer SIGINT (Ctrl+C) et SIGTERM
+    signal(SIGINT, SIG_IGN); // Ignorer Ctrl+C
+    signal(SIGTERM, SIG_IGN); // Ignorer SIGTERM
+
     // Commandes Internes
     if ( strcmp (command[0],"cd") == 0 ){ // cd
-        cd(command);
+        last_status = cd(command);
         return;
     } else if ( strcmp ( command[0],"ftype") == 0 ){ // ftype 
-        ftype(command);
+        last_status = ftype(command);
         return;
     } else if (strcmp(command[0], "pwd") == 0) { // pwd
-        pwd();
+        last_status = pwd();
         return;
     } else if (strcmp(command[0], "exit") == 0) {
-        exit_shell(command);  // Appelle la fonction exit_shell
+        last_status = exit_shell(command);  // Appelle la fonction exit_shell
         return;
     }
 
@@ -80,6 +84,10 @@ void handle_command(char** command) {
     pid_t pid = fork();
     if (pid == 0) {
         // Child process
+
+        // On rétablit les signaux à leurs comportements par défaut donc si un signal ( ex SIGINT) est reçu le processus sera tué
+        signal(SIGINT, SIG_DFL);
+        signal(SIGTERM, SIG_DFL); 
 
         // Check if the command is a built-in
         char* bin_path = "bin/";
@@ -112,8 +120,15 @@ void handle_command(char** command) {
         // printf("`%s` is not recognized as an internal or external command. %s\n", command[0], strerror(errno)); 
         exit(EXIT_FAILURE);
     } else if (pid > 0) {
-        // Parent process
-        wait(NULL);
+                int wstatus;
+        waitpid(pid, &wstatus, 0);  // Attendre la fin du processus enfant
+        if (WIFEXITED(wstatus)) {
+            // Si le processus enfant s'est terminé normalement
+            last_status = WEXITSTATUS(wstatus); // Valeur de retour du programme exécuté
+        } else if (WIFSIGNALED(wstatus)) {
+            // Si le processus enfant a été tué par un signal
+            last_status = 255;  // TODO : 255 ou bien code de retour du signal (128 + numéro du signal) ?
+        }
     } else {
         // Fork failed
         perror("fork");
@@ -161,9 +176,9 @@ int main() {
         char* line = readline(prompt); // line contient la commande entrée par l'utilisateur
         free(prompt); // On libère la mémoire allouée pour le prompt
 
-        if (!line) {
+        if (line == NULL) {
             // Si line est NULL (EOF ou erreur), On quitte la boucle
-            exit(last_status);  // avec last_status, qui est 255 en cas de signal
+            exit_shell(NULL);  // exit avec last_status 
         }
 
         if (strlen(line) > 0) {
