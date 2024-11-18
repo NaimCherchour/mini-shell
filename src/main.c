@@ -6,9 +6,15 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <assert.h>
+#include <linux/limits.h> // Pour #define PATH_MAX 4096
 
+// headers
 #include "internals.h"
-#define PATH_MAX 4096
+#include "prompt.h"
+
 
 char** parse_prompt(char* prompt) {
     // Allocate memory for arguments
@@ -52,15 +58,18 @@ char** parse_prompt(char* prompt) {
     return args;
 }
 
+
 void handle_command(char** command) {
-    if ( strcmp (command[0],"cd") == 0 ){ // cd commande interne 
+
+    // Commandes Internes
+    if ( strcmp (command[0],"cd") == 0 ){ // cd
         cd(command);
         return;
-    } else if ( strcmp ( command[0],"ftype") == 0 ){ // ftype commande interne
+    } else if ( strcmp ( command[0],"ftype") == 0 ){ // ftype 
         ftype(command);
         return;
-    } else if (strcmp(command[0], "pwd") == 0) { // commande interne pwd
-        pwd();  // Appelle la fonction pwd
+    } else if (strcmp(command[0], "pwd") == 0) { // pwd
+        pwd();
         return;
     } else if (strcmp(command[0], "exit") == 0) {
         exit_shell(command);  // Appelle la fonction exit_shell
@@ -111,25 +120,20 @@ void handle_command(char** command) {
     }
 }
 
+
 int main() {
-    //clear the screen
+    // clear the screen
     printf("\033[H\033[J");
 
 
     int status[] = {70, 111, 114, 115, 104, 101, 108, 108, 32, 91, 102, 115, 104, 93, 194, 169, 32, 118, 48, 46, 48, 46, 49, 13};
-    char* prompt;
-    char cwd[1024];
-    
-
     for (size_t i = 0; i < sizeof(status) / sizeof(status[0]); i++) {
         printf("%c", status[i]);
     }
     printf("\n");
 
-    
-    // print the date and time
+    // Afficher la date et l'heure actuelles
     pid_t pid = fork();
-
     if (pid == 0) {
         // Child process
         execlp("date", "date", NULL);
@@ -144,37 +148,34 @@ int main() {
 
     printf("\n");
 
-
-
-    // reading the input
+    // Boucle principale pour lire les commandes utilisateur
     while (1) {
-        // Get the current working directory
-        if (getcwd(cwd, sizeof(cwd)) != NULL) {
-            // Create the prompt string
-            char prompt_str[1064];
-            snprintf(prompt_str, sizeof(prompt_str), "[fsh]%s$ ", cwd);
-            rl_outstream = stderr; // L'affichage du prompt de fsh est réalisé sur sa sortie erreur
-            prompt = readline(prompt_str);
-        } else {
-            perror("getcwd");
+        // Générer le prompt
+        rl_outstream = stderr; // Affichage du prompt sur sa sortie d'erreur
+        char* prompt = generate_prompt(); // Retourne un prompt alloué dynamiquement
+        if (!prompt) {
+            fprintf(stderr, "Erreur: échec de la génération du prompt.\n");
             exit(EXIT_FAILURE);
         }
+        // Lire la commande
+        char* line = readline(prompt); // line contient la commande entrée par l'utilisateur
+        free(prompt); // On libère la mémoire allouée pour le prompt
 
-        if (prompt == NULL) {
-            break;
-        }
-   
-        if (strlen(prompt) > 0) {
-            // Add the input to the history list
-            add_history(prompt);
-            // Parse the prompt
-            char** command = parse_prompt(prompt);
-            // Handle the command
-            handle_command(command);
-            free(command);
+        if (!line) {
+            // Si line est NULL (EOF ou erreur), On quitte la boucle
+            exit(last_status);  // avec last_status, qui est 255 en cas de signal
         }
 
-        free(prompt);
+        if (strlen(line) > 0) {
+            add_history(line); // On ajoute la commande à l'historique
+            char** command = parse_prompt(line); // On découpe la commande en arguments
+            if (command) {
+                handle_command(command);
+                free(command); // On libère la mémoire allouée pour les arguments
+            }
+        }
+
+        free(line); // On libère la mémoire allouée par readline
     }
 
     return EXIT_SUCCESS;
