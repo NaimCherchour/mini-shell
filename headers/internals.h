@@ -16,7 +16,7 @@ int ftype(char **args);
 
 int pwd();  // Affiche le répertoire courant
 
-void exit_shell(char **args);  // Termine le shell avec un code de sortie
+int exit_shell(char **args);  // Termine le shell avec un code de sortie
 
 
 

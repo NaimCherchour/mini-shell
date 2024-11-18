@@ -86,13 +86,39 @@ int pwd() {
     }
 }
 
-void exit_shell(char **args) {
-    int exit_code = 0; // Code de sortie par défaut
+int exit_shell(char **args) {
+    int argc = 0;
 
-    if (args[1] != NULL) {
-        exit_code = atoi(args[1]); // Convertit le second argument en entier
+    // Vérifier si args est NULL (cas d'un CTRL+D ou d'un appel exit_shell(NULL) )
+    if (args == NULL) {
+        exit(last_status);
     }
 
-    printf("Exiting shell with code %d\n", exit_code);
-    exit(exit_code);
+
+    // Compter le nombre d'arguments
+    while (args[argc] != NULL) {
+        argc++;
+    }
+
+    switch (argc) {
+        case 1:
+            // Aucun argument, quitter avec le dernier code de retour de la commande
+            exit(last_status); // Utilise last_status qui a été mis à jour par les commandes précédentes
+
+        case 2:
+            // Un argument, vérifier si c'est un entier valide pour le code de retour
+            int value;
+            if (sscanf(args[1], "%d", &value) <= 0) {
+                fprintf(stderr, "Usage: %s [VAL]\n", args[0]);
+                errno = EINVAL;  // Si l'argument n'est pas un entier valide
+                return 1;
+            }
+            exit(value); // Quitter avec le code de retour spécifié
+
+        default:
+            // Trop d'arguments, erreur
+            errno = E2BIG; 
+            fprintf(stderr, "Usage: %s [VAL]\n", args[0]);
+            return 1;
+    }
 }
