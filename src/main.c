@@ -5,11 +5,14 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <assert.h>
 #include <linux/limits.h> // Pour #define PATH_MAX 4096
+#include <signal.h>
 
 // headers
 #include "internals.h"
@@ -58,6 +61,7 @@ char** parse_prompt(char* prompt) {
     return args;
 }
 
+int for_loop(char** command);
 
 void handle_command(char** command) {
 
@@ -78,6 +82,9 @@ void handle_command(char** command) {
     } else if (strcmp(command[0], "exit") == 0) {
         last_status = exit_shell(command);  // Appelle la fonction exit_shell
         return;
+    } else if (strcmp(command[0], "for") == 0){
+            for_loop(command);
+            return;   
     }
 
 
@@ -135,6 +142,79 @@ void handle_command(char** command) {
     }
 }
 
+int for_loop(char** command){
+    // assert(command[0] == "for");
+    // assert(command[1] != NULL);
+    // assert(command[3] != "in");
+    // assert(command[4] != NULL);
+    // assert(command[5] != "{");
+    // assert(command[6] != NULL);
+    // assert(command[7] != "}");
+
+    char var = command[1][0]; // variable (only one letter)
+    // debug
+    // printf("var: %c\n", var);
+    char* directory = command[3]; 
+    // debug
+    // printf("directory: %s\n", directory);
+    char* cmd = command[5];
+    // debug
+    // printf("cmd: %s\n", cmd);
+    
+    struct dirent *entry;
+    DIR *dp = opendir(directory);
+
+    if (dp == NULL) {
+        perror("opendir");
+        return errno;
+    }
+
+    //debug 
+    // printf("directory: %s\n", directory);
+
+    while ((entry = readdir(dp)) != NULL) {
+        // Skip hidden files and directories (those starting with '.')
+        if (entry->d_name[0] == '.') {
+            continue;
+        }
+
+        char full_path[1024];
+        snprintf(full_path, sizeof(full_path), "%s/%s", directory, entry->d_name);
+
+        // Get file information
+        struct stat file_stat;
+        if (stat(full_path, &file_stat) == -1) {
+            perror("stat");
+            continue;
+        }
+
+        // Check if it's a regular file
+        if (S_ISREG(file_stat.st_mode)) {
+            // construct new char array to store the command and the file
+            char* new_command[10] = {0};
+            new_command[0] = cmd;
+            size_t i = 1;
+            while (command[i+5] != NULL && i < 10 && strcmp(command[i+5], "}") != 0) {
+                if (command[i+5][0] == '$' && command[i+5][1] == var) {
+                    new_command[i] = full_path;
+                    i++;
+                    continue;
+                }
+                new_command[i] = command[i+5];
+                i++;
+            }
+
+            // Handle the command
+            handle_command(new_command);
+        }
+    
+    }
+
+
+    closedir(dp);
+    return 0;
+    
+}
 
 int main() {
     // clear the screen
