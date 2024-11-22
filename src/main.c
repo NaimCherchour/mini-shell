@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <assert.h>
 #include <linux/limits.h> // Pour #define PATH_MAX 4096
+#include <signal.h>
 
 // headers
 #include "internals.h"

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
+#include <linux/limits.h>
 
 // headers
 #include "prompt.h" 
