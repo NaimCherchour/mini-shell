@@ -191,19 +191,18 @@ int for_loop(char** command){
         // Check if it's a regular file
         if (S_ISREG(file_stat.st_mode)) {
             // construct new char array to store the command and the file
-            char* new_command[3]; // command + var or optional arg + NULL
+            char* new_command[10] = {0};
             new_command[0] = cmd;
-            if ( '$' == command[6][0]){
-                if (command[6][1] == var){
-                    new_command[1] = full_path;
-                } else {
-                    new_command[1] = NULL;
+            size_t i = 1;
+            while (command[i+5] != NULL && i < 10 && strcmp(command[i+5], "}") != 0) {
+                if (command[i+5][0] == '$' && command[i+5][1] == var) {
+                    new_command[i] = full_path;
+                    i++;
+                    continue;
                 }
-            } else {
-                new_command[1] = command[6];
+                new_command[i] = command[i+5];
+                i++;
             }
-            new_command[2] = NULL;
-
 
             // Handle the command
             handle_command(new_command);
