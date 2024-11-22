@@ -4,15 +4,18 @@
 ## Structure du dépot :
 
 📦mini-shell  
- ┣ 📂bin/ ------------------------------------> Contient les binaires executables pour nos versions de commandes externes (locales). Géneré apres compilation  
- ┃ ┣ my-sed   
- ┃ ┣ my-tr  
- ┃ ┗ my-wlc  
+ ┣ 📂bin/ ------------------------------------> Contient les binaires executables pour les commandes locales.  
+
+┣ 📂obj/ -----------------------------------> Contient les fichiers .o┃
+┣ 📂headers/ --------------------------------> Contient les fichiers d'en-tête  
+   ┃ ┣ prompt.h
+   ┃ ┣ internals.h
  ┣ 📂src/ ------------------------------------> Contient les sources   
  ┃ ┣ 📂locals/  ----------------------------> Contient les sources des commandes locales  
  ┃ ┃ ┣ my-sed.c  
  ┃ ┃ ┣ my-tr.c  
  ┃ ┃ ┗ my-wlc.c  
+ ┃  ┃ prompt.c ------------------------------> source de la fonction d'affichage du prompt  
  ┃ ┣ internals.c ---------------------------> source des commandes internes
  ┃ ┗ main.c ------------------------------> source du fsh  
  ┣ ARCHITECTURE.md  
