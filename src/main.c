@@ -169,6 +169,9 @@ int for_loop(char** command){
         return errno;
     }
 
+    //debug 
+    // printf("directory: %s\n", directory);
+
     while ((entry = readdir(dp)) != NULL) {
         // Skip hidden files and directories (those starting with '.')
         if (entry->d_name[0] == '.') {
@@ -192,7 +195,7 @@ int for_loop(char** command){
             new_command[0] = cmd;
             if ( '$' == command[6][0]){
                 if (command[6][1] == var){
-                    new_command[1] = entry->d_name;
+                    new_command[1] = full_path;
                 } else {
                     new_command[1] = NULL;
                 }
