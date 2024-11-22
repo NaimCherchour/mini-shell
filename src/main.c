@@ -151,7 +151,10 @@ int for_loop(char** command){
     // assert(command[6] != NULL);
     // assert(command[7] != "}");
 
-    char* directory = command[3];
+    char var = command[1][0]; // variable (only one letter)
+    // debug
+    // printf("var: %c\n", var);
+    char* directory = command[3]; 
     // debug
     // printf("directory: %s\n", directory);
     char* cmd = command[5];
@@ -185,10 +188,19 @@ int for_loop(char** command){
         // Check if it's a regular file
         if (S_ISREG(file_stat.st_mode)) {
             // construct new char array to store the command and the file
-            char* new_command[3];
+            char* new_command[3]; // command + var or optional arg + NULL
             new_command[0] = cmd;
-            new_command[1] = entry->d_name;
+            if ( '$' == command[6][0]){
+                if (command[6][1] == var){
+                    new_command[1] = entry->d_name;
+                } else {
+                    new_command[1] = NULL;
+                }
+            } else {
+                new_command[1] = command[6];
+            }
             new_command[2] = NULL;
+
 
             // Handle the command
             handle_command(new_command);
