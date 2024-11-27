@@ -14,7 +14,7 @@
 #include "../headers/handler.h" // pour handle_command
 #include "../headers/prompt.h" // pour last_status
 
-int for_loop_valide_syntax ( char** command ) {
+int for_syntax ( char** command ) {
         // Vérification de la syntaxe de la commande for
     if (command[0] == NULL || strcmp(command[0], "for") != 0) {
         write(STDERR_FILENO, "Erreur : la commande doit commencer par 'for'\n", 47);
@@ -58,61 +58,59 @@ int for_loop_valide_syntax ( char** command ) {
 
 int for_loop(char** command){
 
-    if (for_loop_valide_syntax(command) == 1 ) {
-            return 1 ;
-    } else {
-        // Syntaxe valide de for
-        char var = command[1][0]; // variable (only one letter)
-        char* directory = command[3]; 
-        char* cmd = command[5];
-
-        struct dirent *entry;
-        DIR *dp = opendir(directory);
-
-        if (dp == NULL) {
-            perror("opendir");
-            return errno;
-        }
-
-        while ((entry = readdir(dp)) != NULL) {
-            // Skip hidden files and directories (those starting with '.')
-            if (entry->d_name[0] == '.') {
-                continue;
-            }
-
-            char full_path[1024];
-            snprintf(full_path, sizeof(full_path), "%s/%s", directory, entry->d_name);
-
-            // Get file information
-            struct stat file_stat;
-            if (stat(full_path, &file_stat) == -1) {
-                perror("stat");
-                continue;
-            }
-
-            // Check if it's a regular file
-            if (S_ISREG(file_stat.st_mode)) {
-                // construct new char array to store the command and the file
-                char* new_command[10] = {0};
-                new_command[0] = cmd;
-                size_t i = 1;
-                while (command[i+5] != NULL && i < 10 && strcmp(command[i+5], "}") != 0) {
-                    if (command[i+5][0] == '$' && command[i+5][1] == var) {
-                        new_command[i] = full_path;
-                        i++;
-                        continue;
-                    }
-                    new_command[i] = command[i+5];
-                    i++;
-                }
-
-                // Handle the command
-                handle_command(new_command);
-            }
+    if (for_syntax(command) == 1 ) return 1 ;
     
-        }
-        
-        closedir(dp);
-        return last_status; // la valeur de retour de la dernière commande exécutée
+    char var = command[1][0]; // variable (only one letter)
+    char* directory = command[3]; 
+    char* cmd = command[5];
+
+    struct dirent *entry;
+    DIR *dp = opendir(directory);
+
+    if (dp == NULL) {
+        perror("opendir");
+        return errno;
     }
+
+    while ((entry = readdir(dp)) != NULL) {
+        // Skip hidden files and directories (those starting with '.')
+        if (entry->d_name[0] == '.') {
+            continue;
+        }
+
+        char full_path[1024];
+        snprintf(full_path, sizeof(full_path), "%s/%s", directory, entry->d_name);
+
+        // Get file information
+        struct stat file_stat;
+        if (stat(full_path, &file_stat) == -1) {
+            perror("stat");
+            continue;
+        }
+
+        // Check if it's a regular file
+        if (S_ISREG(file_stat.st_mode)) {
+            // construct new char array to store the command and the file
+            char* new_command[10] = {0};
+            new_command[0] = cmd;
+            size_t i = 1;
+            while (command[i+5] != NULL && i < 10 && strcmp(command[i+5], "}") != 0) {
+                if (command[i+5][0] == '$' && command[i+5][1] == var) {
+                    new_command[i] = full_path;
+                    i++;
+                    continue;
+                }
+                new_command[i] = command[i+5];
+                i++;
+            }
+
+            // Handle the command
+            handle_command(new_command);
+        }
+
+    }
+    
+    closedir(dp);
+    return last_status; // la valeur de retour de la dernière commande exécutée
+    
 }

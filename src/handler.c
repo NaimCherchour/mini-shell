@@ -16,7 +16,7 @@
 
 
 // Lire la ligne de commande
-char** parse_command(char* prompt) {
+char** parse_input(char* prompt) {
     // Allocate memory for arguments
     char** args = malloc(10 * sizeof(char*)); // max 10 arguments
     if (args == NULL) {
