@@ -12,30 +12,33 @@
 
 #include "../headers/utils.h"
 #include "../headers/handler.h" // pour handle_command
+#include "../headers/prompt.h" // pour last_status
 
 int for_loop_valide_syntax ( char** command ) {
         // Vérification de la syntaxe de la commande for
     if (command[0] == NULL || strcmp(command[0], "for") != 0) {
-        fprintf(stderr, "Erreur : la commande doit commencer par 'for'\n");
+        write(STDERR_FILENO, "Erreur : la commande doit commencer par 'for'\n", 47);
         return 1;
     } else if (command[1] == NULL){
         // La variable de boucle
-        fprintf(stderr, "Erreur : variable manquante après 'for'\n");
+        write(STDERR_FILENO, "Erreur : variable manquante après 'for'\n", 41);
         return 1;
     } else if (strlen(command[1]) != 1) {
-        fprintf(stderr, "Erreur : la variable de boucle '%s' doit être limité à un caractère\n", command[1]);
+        char buffer[256];
+        int len = snprintf(buffer, sizeof(buffer), "Erreur : la variable de boucle '%s' doit être limitée à un caractère\n", command[1]);
+        write(STDERR_FILENO, buffer, len);
         return 1;
     } else if (command[2] == NULL  || strcmp(command[2], "in") !=  0) {
-          // Mot-clé 'in'
-        fprintf(stderr, "Erreur : mot-clé 'in' manquant après la variable de boucle ou espaces incorrects\n");
+        // Mot-clé 'in'
+        write(STDERR_FILENO, "Erreur : mot-clé 'in' manquant après la variable de boucle ou espaces incorrects\n", 83);
         return 1;
     } else if(command[3] == NULL) {
         // Le répertoire
-        fprintf(stderr, "Erreur : répertoire cible manquant après 'in'\n");
+        write(STDERR_FILENO, "Erreur : répertoire cible manquant après 'in'\n", 48);
         return 1;
     } else if (command[4] == NULL || strcmp(command[4], "{") != 0) {
         // Accolade ouvrante {
-        fprintf(stderr, "Erreur : '{' manquante ou mal positionnée pour ouvrir la commande structurée \n");
+        write(STDERR_FILENO, "Erreur : '{' manquante ou mal positionnée pour ouvrir la commande structurée \n", 80);
         return 1;
     } else {
         // La fin par '}'
@@ -47,7 +50,7 @@ int for_loop_valide_syntax ( char** command ) {
             i++;
         }
         if (command[i] == NULL) {
-            fprintf(stderr, "Erreur : '}' manquant pour fermer la commande structurée ou espaces incorrects\n");
+            write(STDERR_FILENO, "Erreur : '}' manquant pour fermer la commande structurée ou espaces incorrects\n", 80);
             return 1;
         } else { return 0 ;}
     }
@@ -110,6 +113,6 @@ int for_loop(char** command){
         }
         
         closedir(dp);
-        return 0;
+        return last_status; // la valeur de retour de la dernière commande exécutée
     }
 }

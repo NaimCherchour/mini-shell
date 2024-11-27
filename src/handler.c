@@ -121,7 +121,6 @@ void handle_command(char** command) {
 
         // If execvp fails then there is no such command
         perror(command[0]);
-        // printf("`%s` is not recognized as an internal or external command. %s\n", command[0], strerror(errno)); 
         exit(EXIT_FAILURE);
     } else if (pid > 0) {
                 int wstatus;
