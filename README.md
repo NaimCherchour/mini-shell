@@ -22,6 +22,11 @@ or:
 make run
 ```
 
+* Clean the project 
+```sh
+make clean
+```
+
 > [!TIP]
 > To see other available target, use `make help`
 
@@ -38,7 +43,7 @@ make run
 - [ ] Redirections
 - [ ] Signals
 - [ ] command structuring
-- [ ] `for` loop
+- [x] `for` loop
 - [ ] `if else` conditional branching
 ### Shortcuts
 - [x] UP and DOWN arrows (seeking command history)
@@ -47,9 +52,8 @@ make run
 ### Builtins
 - [x] `exit`
 - [x] `cd`
-- [ ] `echo`
 - [x] `pwd`
-- [ ] `ls`
+- [x] `ftype`
 - [x] `wlc` aka `wc`
 - [x] `tr`
 - [x] `sed` 
