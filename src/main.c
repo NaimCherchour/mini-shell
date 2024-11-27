@@ -21,14 +21,14 @@
 
 int main() {
     // clear the screen
-    printf("\033[H\033[J");
+    write(STDOUT_FILENO, "\033[H\033[J", 6);
 
 
     int status[] = {70, 111, 114, 115, 104, 101, 108, 108, 32, 91, 102, 115, 104, 93, 194, 169, 32, 118, 48, 46, 48, 46, 49, 13};
     for (size_t i = 0; i < sizeof(status) / sizeof(status[0]); i++) {
-        printf("%c", status[i]);
+        write(STDOUT_FILENO, &status[i], 1);
     }
-    printf("\n");
+    write(STDOUT_FILENO, "\n", 1);
 
     // Afficher la date et l'heure actuelles
     pid_t pid = fork();
@@ -44,7 +44,7 @@ int main() {
         perror("fork");
     }
 
-    printf("\n");
+    write(STDOUT_FILENO, "\n", 1);
 
     // Boucle principale pour lire les commandes utilisateur
     while (1) {
@@ -52,7 +52,7 @@ int main() {
         rl_outstream = stderr; // Affichage du prompt sur sa sortie d'erreur
         char* prompt = generate_prompt(); // Retourne un prompt alloué dynamiquement
         if (!prompt) {
-            fprintf(stderr, "Erreur: échec de la génération du prompt.\n");
+            write(STDERR_FILENO, "Erreur: échec de la génération du prompt.\n", 43);            
             exit(EXIT_FAILURE);
         }
         // Lire la commande
@@ -66,7 +66,7 @@ int main() {
 
         if (strlen(line) > 0) {
             add_history(line); // On ajoute la commande à l'historique
-            char** command = parse_command(line); // On découpe la commande en arguments
+            char** command = parse_input(line); // On découpe la commande en arguments
             if (command) {
                 handle_command(command);
                 free(command); // On libère la mémoire allouée pour les arguments

@@ -21,12 +21,12 @@ int cd (char **args) {
     if (args[1] == NULL) {     // Si l'utilisateur entre que "cd", on va vers le répertoire HOME
         rep_destinataire = getenv("HOME");
         if (rep_destinataire == NULL) {
-            fprintf(stderr, "cd: HOME non définie \n");
+            write(STDERR_FILENO, "cd: HOME non définie \n",22);
             return 1;
         }
     } else if (strcmp(args[1], "-") == 0) {     // Si l'argument est "-", on va vers le répertoire précédent
         if (rep_precedent[0] == '\0') {
-            fprintf(stderr, "cd: répertoire précédent non défini \n");
+            write(STDERR_FILENO, "cd: répertoire précédent non défini \n",41);
             return 1;
         }
         rep_destinataire = rep_precedent;
@@ -57,32 +57,37 @@ int ftype(char **args) {
     struct stat file_stat;
 
     if (args[1] == NULL) {
-        fprintf(stderr, "ftype: paramètre manquant\n");
+        write(STDERR_FILENO, "ftype: paramètre manquant\n",27);
         return 1;
     }
     if (lstat(args[1], &file_stat) == -1) {
         perror("ftype");
         return 1;
     }
+    
+    const char *type_message = NULL; // le type affiché
     if (S_ISDIR(file_stat.st_mode)) {
-        printf("directory\n");
+        type_message = "directory\n";
     } else if (S_ISREG(file_stat.st_mode)) {
-        printf("regular file\n");
+        type_message = "regular file\n";
     } else if (S_ISLNK(file_stat.st_mode)) {
-        printf("symbolic link\n");
+        type_message = "symbolic link\n";
     } else if (S_ISFIFO(file_stat.st_mode)) {
-        printf("named pipe\n");
+        type_message = "named pipe\n";
     } else {
-        printf("other\n");
+        type_message = "other\n";
     }
 
+    write(STDOUT_FILENO, type_message, strlen(type_message));
     return 0;
 }
 
 int pwd() {
     char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
-        printf("%s\n", cwd);  // Affiche le répertoire courant
+        char buffer[PATH_MAX+1];
+        snprintf(buffer, sizeof(buffer), "%s\n", cwd);
+        write(STDOUT_FILENO, buffer, strlen(buffer));  // Affiche le répertoire courant
         return 0;
     } else {
         perror("pwd");  // Affiche une erreur si `getcwd` échoue
@@ -113,7 +118,7 @@ int exit_shell(char **args) {
             // Un argument, vérifier si c'est un entier valide pour le code de retour
             int value;
             if (sscanf(args[1], "%d", &value) <= 0) {
-                fprintf(stderr, "Usage: %s [VAL]\n", args[0]);
+                write(STDERR_FILENO, "Usage: exit [VAL]\n", 18);
                 errno = EINVAL;  // Si l'argument n'est pas un entier valide
                 return 1;
             }
@@ -122,7 +127,7 @@ int exit_shell(char **args) {
         default:
             // Trop d'arguments, erreur
             errno = E2BIG; 
-            fprintf(stderr, "Usage: %s [VAL]\n", args[0]);
+            write(STDERR_FILENO, "Usage: exit [VAL]\n", 18);
             return 1;
     }
 }

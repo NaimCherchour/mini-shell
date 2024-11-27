@@ -5,7 +5,7 @@
  * Lis la ligne de commande entrée par l'user et 
  * la découpe en 
  */
-char** parse_command(char* prompt) ;
+char** parse_input(char* prompt) ;
 
 /** 
  * Exécute la ligne de commande `command`

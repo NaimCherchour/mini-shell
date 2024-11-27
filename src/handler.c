@@ -16,7 +16,7 @@
 
 
 // Lire la ligne de commande
-char** parse_command(char* prompt) {
+char** parse_input(char* prompt) {
     // Allocate memory for arguments
     char** args = malloc(10 * sizeof(char*)); // max 10 arguments
     if (args == NULL) {
@@ -121,7 +121,6 @@ void handle_command(char** command) {
 
         // If execvp fails then there is no such command
         perror(command[0]);
-        // printf("`%s` is not recognized as an internal or external command. %s\n", command[0], strerror(errno)); 
         exit(EXIT_FAILURE);
     } else if (pid > 0) {
                 int wstatus;

@@ -12,30 +12,33 @@
 
 #include "../headers/utils.h"
 #include "../headers/handler.h" // pour handle_command
+#include "../headers/prompt.h" // pour last_status
 
-int for_loop_valide_syntax ( char** command ) {
+int for_syntax ( char** command ) {
         // Vérification de la syntaxe de la commande for
     if (command[0] == NULL || strcmp(command[0], "for") != 0) {
-        fprintf(stderr, "Erreur : la commande doit commencer par 'for'\n");
+        write(STDERR_FILENO, "Erreur : la commande doit commencer par 'for'\n", 47);
         return 1;
     } else if (command[1] == NULL){
         // La variable de boucle
-        fprintf(stderr, "Erreur : variable manquante après 'for'\n");
+        write(STDERR_FILENO, "Erreur : variable manquante après 'for'\n", 41);
         return 1;
     } else if (strlen(command[1]) != 1) {
-        fprintf(stderr, "Erreur : la variable de boucle '%s' doit être limité à un caractère\n", command[1]);
+        char buffer[256];
+        int len = snprintf(buffer, sizeof(buffer), "Erreur : la variable de boucle '%s' doit être limitée à un caractère\n", command[1]);
+        write(STDERR_FILENO, buffer, len);
         return 1;
     } else if (command[2] == NULL  || strcmp(command[2], "in") !=  0) {
-          // Mot-clé 'in'
-        fprintf(stderr, "Erreur : mot-clé 'in' manquant après la variable de boucle ou espaces incorrects\n");
+        // Mot-clé 'in'
+        write(STDERR_FILENO, "Erreur : mot-clé 'in' manquant après la variable de boucle ou espaces incorrects\n", 83);
         return 1;
     } else if(command[3] == NULL) {
         // Le répertoire
-        fprintf(stderr, "Erreur : répertoire cible manquant après 'in'\n");
+        write(STDERR_FILENO, "Erreur : répertoire cible manquant après 'in'\n", 48);
         return 1;
     } else if (command[4] == NULL || strcmp(command[4], "{") != 0) {
         // Accolade ouvrante {
-        fprintf(stderr, "Erreur : '{' manquante ou mal positionnée pour ouvrir la commande structurée \n");
+        write(STDERR_FILENO, "Erreur : '{' manquante ou mal positionnée pour ouvrir la commande structurée \n", 80);
         return 1;
     } else {
         // La fin par '}'
@@ -47,7 +50,7 @@ int for_loop_valide_syntax ( char** command ) {
             i++;
         }
         if (command[i] == NULL) {
-            fprintf(stderr, "Erreur : '}' manquant pour fermer la commande structurée ou espaces incorrects\n");
+            write(STDERR_FILENO, "Erreur : '}' manquant pour fermer la commande structurée ou espaces incorrects\n", 80);
             return 1;
         } else { return 0 ;}
     }
@@ -55,61 +58,59 @@ int for_loop_valide_syntax ( char** command ) {
 
 int for_loop(char** command){
 
-    if (for_loop_valide_syntax(command) == 1 ) {
-            return 1 ;
-    } else {
-        // Syntaxe valide de for
-        char var = command[1][0]; // variable (only one letter)
-        char* directory = command[3]; 
-        char* cmd = command[5];
-
-        struct dirent *entry;
-        DIR *dp = opendir(directory);
-
-        if (dp == NULL) {
-            perror("opendir");
-            return errno;
-        }
-
-        while ((entry = readdir(dp)) != NULL) {
-            // Skip hidden files and directories (those starting with '.')
-            if (entry->d_name[0] == '.') {
-                continue;
-            }
-
-            char full_path[1024];
-            snprintf(full_path, sizeof(full_path), "%s/%s", directory, entry->d_name);
-
-            // Get file information
-            struct stat file_stat;
-            if (stat(full_path, &file_stat) == -1) {
-                perror("stat");
-                continue;
-            }
-
-            // Check if it's a regular file
-            if (S_ISREG(file_stat.st_mode)) {
-                // construct new char array to store the command and the file
-                char* new_command[10] = {0};
-                new_command[0] = cmd;
-                size_t i = 1;
-                while (command[i+5] != NULL && i < 10 && strcmp(command[i+5], "}") != 0) {
-                    if (command[i+5][0] == '$' && command[i+5][1] == var) {
-                        new_command[i] = full_path;
-                        i++;
-                        continue;
-                    }
-                    new_command[i] = command[i+5];
-                    i++;
-                }
-
-                // Handle the command
-                handle_command(new_command);
-            }
+    if (for_syntax(command) == 1 ) return 1 ;
     
-        }
-        
-        closedir(dp);
-        return 0;
+    char var = command[1][0]; // variable (only one letter)
+    char* directory = command[3]; 
+    char* cmd = command[5];
+
+    struct dirent *entry;
+    DIR *dp = opendir(directory);
+
+    if (dp == NULL) {
+        perror("opendir");
+        return errno;
     }
+
+    while ((entry = readdir(dp)) != NULL) {
+        // Skip hidden files and directories (those starting with '.')
+        if (entry->d_name[0] == '.') {
+            continue;
+        }
+
+        char full_path[1024];
+        snprintf(full_path, sizeof(full_path), "%s/%s", directory, entry->d_name);
+
+        // Get file information
+        struct stat file_stat;
+        if (stat(full_path, &file_stat) == -1) {
+            perror("stat");
+            continue;
+        }
+
+        // Check if it's a regular file
+        if (S_ISREG(file_stat.st_mode)) {
+            // construct new char array to store the command and the file
+            char* new_command[10] = {0};
+            new_command[0] = cmd;
+            size_t i = 1;
+            while (command[i+5] != NULL && i < 10 && strcmp(command[i+5], "}") != 0) {
+                if (command[i+5][0] == '$' && command[i+5][1] == var) {
+                    new_command[i] = full_path;
+                    i++;
+                    continue;
+                }
+                new_command[i] = command[i+5];
+                i++;
+            }
+
+            // Handle the command
+            handle_command(new_command);
+        }
+
+    }
+    
+    closedir(dp);
+    return last_status; // la valeur de retour de la dernière commande exécutée
+    
 }
