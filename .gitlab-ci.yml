@@ -9,8 +9,8 @@ variables:
   OBJ_DIR: obj
 
 before_script:
-  # Ensure make and gcc are available
-  - apt-get update && apt-get install -y build-essential libreadline-dev
+  # Ensure make, gcc, and git are available
+  - apt-get update && apt-get install -y build-essential libreadline-dev git
 
 build:
   stage: build
