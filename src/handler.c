@@ -82,7 +82,11 @@ void handle_command(char** command) {
     } else if (strcmp(command[0], "for") == 0){
         last_status = for_loop(command);
         return;   
+    } else if (strcmp(command[0], "if") == 0){
+        last_status = if_command(command);
+        return;
     }
+    
 
 
     pid_t pid = fork();
