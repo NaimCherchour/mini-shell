@@ -116,16 +116,61 @@ int for_loop(char** command){
     
 }
 
+
+
 // if TEST { CMD } else { CMD }
-int if_command(char** command){
-    char* test = command[1];
+// TEST is a pipeline of commands that return 0 or 1
+int if_command(char** command) {
+    // find test delimited by if and {
+    char* test[10] = {0};
+    int i = 1;
+    int j = 0;
+    while (command[i] != NULL && strcmp(command[i], "{") != 0) {
+        test[j] = command[i];
+        i++;
+        j++;
+    }
+    // check for missing {
+    if (command[i] == NULL) {
+        write(STDERR_FILENO, "Syntax error : missing '{'.\n", 29);
+        return 1;
+    }
+    test[j] = NULL; 
+
+    // debug print test
+    // printf("test\n");
+    // for (int k = 0; k < 10; k++) {
+    //     if (test[k] != NULL) {
+    //         printf("%s ", test[k]);
+    //     }
+    //     printf("\n");
+    // }
+
     // find cmd1 delimited by { }
     char* cmd1[10] = {0};
-    int i = 3;
+    i++; // Skip the '{'
+    j = 0;
     while (command[i] != NULL && strcmp(command[i], "}") != 0) {
-        cmd1[i-3] = command[i];
+        cmd1[j] = command[i];
         i++;
+        j++;
     }
+    // check for missing }
+    if (command[i] == NULL) {
+        write(STDERR_FILENO, "Syntax error : missing '}.'\n", 29);
+        return 1;
+    }
+    cmd1[j] = NULL; 
+
+    // debug 
+    // printf("cmd1\n");
+    // for (int k = 0; k < 10; k++) {
+    //     if (cmd1[k] != NULL) {
+    //         printf("%s ", cmd1[k]);
+    //     }
+    //     printf("\n");
+    // }
+
     // check for else
     bool has_else = false;
     if (command[i+1] != NULL && strcmp(command[i+1], "else") == 0) {
@@ -135,22 +180,47 @@ int if_command(char** command){
     // find cmd2 delimited by { }
     char* cmd2[10] = {0};
     if (has_else) {
-        i+=3;
-        int j = 0;
+        // check for missing {
+        if (command[i+2] == NULL || strcmp(command[i+2], "{") != 0) {
+            write(STDERR_FILENO, "Syntax error : missing '{' after else.\n", 39);
+            return 1;
+        }
+
+        i += 3; // Skip the '} else {'
+        j = 0;
         while (command[i] != NULL && strcmp(command[i], "}") != 0) {
             cmd2[j] = command[i];
             i++;
             j++;
         }
+        cmd2[j] = NULL; 
+
+        // check for missing }
+        if (command[i] == NULL) {
+            write(STDERR_FILENO, "Syntax error : missing '}.'\n", 29);
+            return 1;
+        }
     }
 
-    // Execute the command
-    if (strcmp(test, "0") == 0) {
+    // debug 
+    // printf("cmd2\n");
+    // for (int k = 0; k < 10; k++) {
+    //     if (cmd2[k] != NULL) {
+    //         printf("%s ", cmd2[k]);
+    //     }
+    //     printf("\n");
+    // }
+
+    // Execute the test command
+    handle_command(test);
+    // debug
+    // printf("last_status: %d\n", last_status);
+    if (last_status == 0) {
         handle_command(cmd1);
     } else if (has_else) {
         handle_command(cmd2);
     }
 
 
-    return last_status;
+    return 0;
 }
