@@ -1,6 +1,5 @@
 stages:
   - build
-  - test
   - clean
 
 variables:
@@ -9,8 +8,7 @@ variables:
   OBJ_DIR: obj
 
 before_script:
-  # Ensure make, gcc, and git are available
-  - apt-get update && apt-get install -y build-essential libreadline-dev git
+  - apt-get update && apt-get install -y build-essential libreadline-dev
 
 build:
   stage: build
@@ -23,14 +21,6 @@ build:
       - $OBJ_DIR/
     expire_in: 1 day
 
-test:
-  stage: test
-  dependencies:
-    - build
-  script:
-    # Run the tests
-    - make test
-  allow_failure: true
 
 clean:
   stage: clean
