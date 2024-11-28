@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <linux/limits.h> // Pour #define PATH_MAX 4096
 #include <signal.h>
+#include <stdbool.h>
 
 
 #include "../headers/utils.h"
@@ -113,4 +114,43 @@ int for_loop(char** command){
     closedir(dp);
     return last_status; // la valeur de retour de la dernière commande exécutée
     
+}
+
+// if TEST { CMD } else { CMD }
+int if_command(char** command){
+    char* test = command[1];
+    // find cmd1 delimited by { }
+    char* cmd1[10] = {0};
+    int i = 3;
+    while (command[i] != NULL && strcmp(command[i], "}") != 0) {
+        cmd1[i-3] = command[i];
+        i++;
+    }
+    // check for else
+    bool has_else = false;
+    if (command[i+1] != NULL && strcmp(command[i+1], "else") == 0) {
+        has_else = true;
+    }
+
+    // find cmd2 delimited by { }
+    char* cmd2[10] = {0};
+    if (has_else) {
+        i+=3;
+        int j = 0;
+        while (command[i] != NULL && strcmp(command[i], "}") != 0) {
+            cmd2[j] = command[i];
+            i++;
+            j++;
+        }
+    }
+
+    // Execute the command
+    if (strcmp(test, "0") == 0) {
+        handle_command(cmd1);
+    } else if (has_else) {
+        handle_command(cmd2);
+    }
+
+
+    return last_status;
 }

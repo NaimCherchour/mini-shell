@@ -9,4 +9,6 @@ int for_syntax ( char** command );
 
 int for_loop(char** command); // commande for et retourne la valeur de retour 
 
+int if_command(char** command); // if TEST { CMD } else { CMD }
+
 #endif
