@@ -9,6 +9,7 @@ LOCALS_DIR = $(SRC_DIR)/locals
 HEADERS_DIR = headers
 BIN_DIR = bin
 OBJ_DIR = obj
+TESTS_DIR = tests
 
 # Output Executable
 TARGET = fsh
@@ -52,6 +53,13 @@ clean:
 debug:
 	@echo "LOCALS_BINS: $(LOCALS_BINS)"
 	@echo "OTHER_OBJS: $(OTHER_OBJS)"
+
+test:
+	test:
+		@for file in $(TESTS_DIR)/*.sh; do \
+			echo "Running test: $$file"; \
+			$$file; \
+		done
 
 help:
 	@echo "Usage: make [all|clean|debug|help]"
