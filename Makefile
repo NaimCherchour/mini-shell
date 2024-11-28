@@ -55,11 +55,10 @@ debug:
 	@echo "OTHER_OBJS: $(OTHER_OBJS)"
 
 test:
-	test:
-		@for file in $(TESTS_DIR)/*.sh; do \
-			echo "Running test: $$file"; \
-			$$file; \
-		done
+	@for file in $(TESTS_DIR)/*.sh; do \
+		echo "Running test: $$file"; \
+		$$file; \
+	done
 
 help:
 	@echo "Usage: make [all|clean|debug|help]"
