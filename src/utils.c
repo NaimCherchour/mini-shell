@@ -112,7 +112,7 @@ int for_loop(char** command){
     }
     
     closedir(dp);
-    return last_status; // la valeur de retour de la dernière commande exécutée
+    return EXIT_SUCCESS; 
     
 }
 
@@ -120,7 +120,7 @@ int for_loop(char** command){
 
 // if TEST { CMD } else { CMD }
 // TEST is a pipeline of commands that return 0 or 1
-int if_command(char** command) {
+int if_else(char** command) {
     // find test delimited by if and {
     char* test[10] = {0};
     int i = 1;
@@ -212,13 +212,13 @@ int if_command(char** command) {
     // }
 
     // Execute the test command
-    handle_command(test);
+    
     // debug
     // printf("last_status: %d\n", last_status);
-    if (last_status == 0) {
-        handle_command(cmd1);
+    if (handle_command(test) == 0) {
+        return handle_command(cmd1);
     } else if (has_else) {
-        handle_command(cmd2);
+        return handle_command(cmd2);
     }
 
 
