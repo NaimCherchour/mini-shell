@@ -191,7 +191,7 @@ int handle_commands(char*** commands) {
     int i = 0;
     while (commands[i][0] != NULL) {
         //debug
-        printf("command: %s\n", commands[i][0]);
+        // printf("command: %s\n", commands[i][0]);
         int status = execute_command(commands[i]);
         if (status != 0) return status;
         i++;
