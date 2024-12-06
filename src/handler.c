@@ -60,34 +60,21 @@ char** parse_input(char* prompt) {
 
 
 
-void handle_command(char** command) {
+int handle_command(char** command) {
 
     //Ignorer SIGINT (Ctrl+C) et SIGTERM
     signal(SIGINT, SIG_IGN); // Ignorer Ctrl+C
     signal(SIGTERM, SIG_IGN); // Ignorer SIGTERM
 
     // Commandes Internes
-    if ( strcmp (command[0],"cd") == 0 ){ // cd
-        last_status = cd(command);
-        return;
-    } else if ( strcmp ( command[0],"ftype") == 0 ){ // ftype 
-        last_status = ftype(command);
-        return;
-    } else if (strcmp(command[0], "pwd") == 0) { // pwd
-        last_status = pwd();
-        return;
-    } else if (strcmp(command[0], "exit") == 0) {
-        last_status = exit_shell(command);  // Appelle la fonction exit_shell
-        return;
-    } else if (strcmp(command[0], "for") == 0){
-        last_status = for_loop(command);
-        return;   
-    } else if (strcmp(command[0], "if") == 0){
-        last_status = if_command(command);
-        return;
-    }
-    
+    if ( strcmp (command[0],"cd") == 0 ) return cd(command);
+    if ( strcmp ( command[0],"ftype") == 0 ) return ftype(command);
+    if (strcmp(command[0], "pwd") == 0) return pwd();
+    if (strcmp(command[0], "exit") == 0) return exit_shell(command);  // Appelle la fonction exit_shell
+    if (strcmp(command[0], "for") == 0) return for_loop(command);
+    if (strcmp(command[0], "if") == 0) return if_command(command);
 
+    
 
     pid_t pid = fork();
     if (pid == 0) {
@@ -131,13 +118,16 @@ void handle_command(char** command) {
         waitpid(pid, &wstatus, 0);  // Attendre la fin du processus enfant
         if (WIFEXITED(wstatus)) {
             // Si le processus enfant s'est terminé normalement
-            last_status = WEXITSTATUS(wstatus); // Valeur de retour du programme exécuté
+            return WEXITSTATUS(wstatus); // Valeur de retour du programme exécuté
         } else if (WIFSIGNALED(wstatus)) {
             // Si le processus enfant a été tué par un signal
-            last_status = 255;  // TODO : 255 ou bien code de retour du signal (128 + numéro du signal) ?
+            return 255;  // TODO : 255 ou bien code de retour du signal (128 + numéro du signal) ?
         }
     } else {
         // Fork failed
         perror("fork");
+        return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }

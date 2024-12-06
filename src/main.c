@@ -66,9 +66,9 @@ int main() {
 
         if (strlen(line) > 0) {
             add_history(line); // On ajoute la commande à l'historique
-            char** command = parse_input(line); // On découpe la commande en arguments
+            char** command = parse_input(line); // parser la commande
             if (command) {
-                handle_command(command);
+                last_status = handle_command(command);
                 free(command); // On libère la mémoire allouée pour les arguments
             }
         }

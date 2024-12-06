@@ -11,5 +11,5 @@ char** parse_input(char* prompt) ;
  * Exécute la ligne de commande `command`
  * commandes externes + internes
  */
-void handle_command(char** command);
+int handle_command(char** command);
 #endif
