@@ -12,7 +12,7 @@
 
 
 #include "../headers/utils.h"
-#include "../headers/handler.h" // pour handle_command
+#include "../headers/handler.h" // pour execute_command
 #include "../headers/prompt.h" // pour last_status
 
 int for_syntax ( char** command ) {
@@ -106,7 +106,7 @@ int for_loop(char** command){
             }
 
             // Handle the command
-            handle_command(new_command);
+            execute_command(new_command);
         }
 
     }
@@ -215,10 +215,10 @@ int if_else(char** command) {
     
     // debug
     // printf("last_status: %d\n", last_status);
-    if (handle_command(test) == 0) {
-        return handle_command(cmd1);
+    if (execute_command(test) == 0) {
+        return execute_command(cmd1);
     } else if (has_else) {
-        return handle_command(cmd2);
+        return execute_command(cmd2);
     }
 
 
