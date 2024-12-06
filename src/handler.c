@@ -72,7 +72,7 @@ int handle_command(char** command) {
     if (strcmp(command[0], "pwd") == 0) return pwd();
     if (strcmp(command[0], "exit") == 0) return exit_shell(command);  // Appelle la fonction exit_shell
     if (strcmp(command[0], "for") == 0) return for_loop(command);
-    if (strcmp(command[0], "if") == 0) return if_command(command);
+    if (strcmp(command[0], "if") == 0) return if_else(command);
 
     
 
