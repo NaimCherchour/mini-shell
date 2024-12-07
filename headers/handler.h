@@ -7,9 +7,22 @@
  */
 char** parse_input(char* prompt) ;
 
+/**
+ * Découpe les commandes successives separes par ; de la ligne de commande
+ */
+char*** cutout_commands(char** parsed_prompt);
+
+void free_commands(char*** commands);
+
 /** 
  * Exécute la ligne de commande `command`
  * commandes externes + internes
  */
-void handle_command(char** command);
+int execute_command(char** command);
+
+/**
+ * Exécute les commandes
+ */
+int handle_commands(char*** commands);
+
 #endif

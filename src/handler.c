@@ -14,6 +14,9 @@
 #include "../headers/internals.h" // pour les commandes internes
 #include "../headers/utils.h" // pour for_loop 
 
+#define MAX_COMMANDS 5
+#define MAX_ARGS 10
+
 
 // Lire la ligne de commande
 char** parse_input(char* prompt) {
@@ -59,35 +62,72 @@ char** parse_input(char* prompt) {
 }
 
 
+// cuts-out commands from the parsed prompt
+char*** cutout_commands(char** parsed_prompt) {
+    // Allocate memory for the commands 2D array
+    char*** commands = (char***)malloc(MAX_COMMANDS * sizeof(char**));
+    if (commands == NULL) {
+        perror("Failed to allocate memory for commands");
+        exit(EXIT_FAILURE);
+    }
 
-void handle_command(char** command) {
+    for (int i = 0; i < MAX_COMMANDS; i++) {
+        commands[i] = (char**)malloc(MAX_ARGS * sizeof(char*));
+        if (commands[i] == NULL) {
+            perror("Failed to allocate memory for commands[i]");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    // Loop through the parsed prompt
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    while (parsed_prompt[i] != NULL) {
+        // Check for the ; separator
+        if (strcmp(parsed_prompt[i], ";") == 0) {
+            commands[j][k] = NULL;
+            j++;
+            k = 0;
+        } else {
+            commands[j][k] = parsed_prompt[i];
+            k++;
+        }
+        i++;
+    }
+    commands[j][k] = NULL; // Ensure the last command is null-terminated
+    commands[j+1][0] = NULL; // Null-terminate the commands array
+
+
+    return commands;
+}
+
+void free_commands(char*** commands) {
+    for (int i = 0; i < MAX_COMMANDS; i++) {
+        free(commands[i]);
+    }
+    free(commands);
+}
+
+
+
+
+// executes one simple command
+int execute_command(char** command) {
 
     //Ignorer SIGINT (Ctrl+C) et SIGTERM
     signal(SIGINT, SIG_IGN); // Ignorer Ctrl+C
     signal(SIGTERM, SIG_IGN); // Ignorer SIGTERM
 
     // Commandes Internes
-    if ( strcmp (command[0],"cd") == 0 ){ // cd
-        last_status = cd(command);
-        return;
-    } else if ( strcmp ( command[0],"ftype") == 0 ){ // ftype 
-        last_status = ftype(command);
-        return;
-    } else if (strcmp(command[0], "pwd") == 0) { // pwd
-        last_status = pwd();
-        return;
-    } else if (strcmp(command[0], "exit") == 0) {
-        last_status = exit_shell(command);  // Appelle la fonction exit_shell
-        return;
-    } else if (strcmp(command[0], "for") == 0){
-        last_status = for_loop(command);
-        return;   
-    } else if (strcmp(command[0], "if") == 0){
-        last_status = if_command(command);
-        return;
-    }
-    
+    if (strcmp(command[0],"cd") == 0) return cd(command);
+    if (strcmp(command[0],"ftype") == 0) return ftype(command);
+    if (strcmp(command[0], "pwd") == 0) return pwd();
+    if (strcmp(command[0], "exit") == 0) return exit_shell(command);
+    if (strcmp(command[0], "for") == 0) return for_loop(command);
+    if (strcmp(command[0], "if") == 0) return if_else(command);
 
+    
 
     pid_t pid = fork();
     if (pid == 0) {
@@ -131,13 +171,30 @@ void handle_command(char** command) {
         waitpid(pid, &wstatus, 0);  // Attendre la fin du processus enfant
         if (WIFEXITED(wstatus)) {
             // Si le processus enfant s'est terminé normalement
-            last_status = WEXITSTATUS(wstatus); // Valeur de retour du programme exécuté
+            return WEXITSTATUS(wstatus); // Valeur de retour du programme exécuté
         } else if (WIFSIGNALED(wstatus)) {
             // Si le processus enfant a été tué par un signal
-            last_status = 255;  // TODO : 255 ou bien code de retour du signal (128 + numéro du signal) ?
+            return 255;  // TODO : 255 ou bien code de retour du signal (128 + numéro du signal) ?
         }
     } else {
         // Fork failed
         perror("fork");
+        return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
+}
+
+// executes the commands one by one
+// TODO: detect piping and redirections
+int handle_commands(char*** commands) {
+    int i = 0;
+    while (commands[i][0] != NULL) {
+        //debug
+        // printf("command: %s\n", commands[i][0]);
+        int status = execute_command(commands[i]);
+        if (status != 0) return status;
+        i++;
+    }
+    return EXIT_SUCCESS;
 }
