@@ -17,7 +17,7 @@
 #include "../headers/handler.h" // pour execute_command
 #include "../headers/prompt.h" // pour last_status
 
-int for_syntax (char** command, int optind) {
+int for_syntax (char** command, int optindex) {
         // Vérification de la syntaxe de la commande for
     if (command[0] == NULL || strcmp(command[0], "for") != 0) {
         write(STDERR_FILENO, "Erreur : la commande doit commencer par 'for'\n", 47);
@@ -44,7 +44,7 @@ int for_syntax (char** command, int optind) {
         write(STDERR_FILENO, "Erreur : répertoire cible manquant après 'in'\n", 48);
         return 1;
     }
-    if (command[optind] == NULL || strcmp(command[optind], "{") != 0) {
+    if (command[optindex] == NULL || strcmp(command[optindex], "{") != 0) {
         // Accolade ouvrante {
         write(STDERR_FILENO, "Erreur : '{' manquante ou mal positionnée pour ouvrir la commande structurée \n", 80);
         return 1;
@@ -76,7 +76,7 @@ void browse_directory(const char *directory, int hidden, int recursive, char var
 
     while ((entry = readdir(dp)) != NULL) {
         // Skip hidden files and directories (those starting with '.')
-        if ( entry->d_name[0] == '.') {
+        if (!hidden && entry->d_name[0] == '.') {
             continue;
         }
 
@@ -112,7 +112,6 @@ void browse_directory(const char *directory, int hidden, int recursive, char var
 
         // If recursive flag is set and entry is a directory, browse subdirectory
         if (recursive && S_ISDIR(file_stat.st_mode)) {
-            continue;
             // Skip "." and ".." directories
             if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
                 browse_directory(full_path, hidden, recursive, var, command, optindex);
@@ -127,15 +126,6 @@ void browse_directory(const char *directory, int hidden, int recursive, char var
 }
 
 int for_loop(char** command){
-    // debug print command
-    for (int i = 0; i < 10; i++) {
-        if (command[i] != NULL) {
-            printf("%s ", command[i]);
-        }
-    }
-    printf("\n");
-
-
 
     int argc = 0;
     int opt = 0;
@@ -159,23 +149,23 @@ int for_loop(char** command){
     while ((opt = getopt(argc, command, "Aretp")) != -1) {
         switch (opt) {
             case 'A':
-                // hidden = 1;
+                hidden++;
                 printf("option A: hidden = %d\n", hidden);
                 break;
             case 'r':
-                // recursive = 1;
+                recursive++;
                 printf("option r: recursive = %d\n", recursive);
                 break;
             case 'e':
-                // extension = 1;
+                extension++;
                 printf("option e: extension = %d\n", extension);
                 break;
             case 't':
-                // type = 1;
+                type++;
                 printf("option t: type = %d\n", type);
                 break;
             case 'p':
-                // parallelism = 1;
+                parallelism++;
                 printf("option p: parallelism = %d\n", parallelism);
                 break;
             case '?':
@@ -185,26 +175,8 @@ int for_loop(char** command){
     }
 
 
-    for (int i = optind; i < argc; i++) {
-        printf("argument: %s\n", command[i]);
-    }
-
     // syntax check
     if (for_syntax(command, optind) == 1 ) return 1 ;
-    // command[optind] is "{"
-    if (command[optind] == NULL || strcmp(command[optind], "{") != 0) {
-        write(STDERR_FILENO, "Syntax error : missing '{'.\n", 29);
-        return 1;
-    }
-
-    // char* cmd = command[optind+1]; // command to execute
-
-    // Browse the directory
-    // printf("directory: %s\n", directory);
-    // printf("hidden: %d\n", hidden);
-    // printf("recursive: %d\n", recursive);
-    // printf("var: %c\n", var);
-    // printf("cmd: %s\n", cmd);
 
     browse_directory(directory, hidden, recursive, var, command, optind);
 
