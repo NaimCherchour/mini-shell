@@ -9,6 +9,8 @@
 #include <linux/limits.h> // Pour #define PATH_MAX 4096
 #include <signal.h>
 #include <stdbool.h>
+#include <unistd.h>
+#include <getopt.h>
 
 
 #include "../headers/utils.h"
@@ -20,24 +22,29 @@ int for_syntax ( char** command ) {
     if (command[0] == NULL || strcmp(command[0], "for") != 0) {
         write(STDERR_FILENO, "Erreur : la commande doit commencer par 'for'\n", 47);
         return 1;
-    } else if (command[1] == NULL){
+    }
+    if (command[1] == NULL){
         // La variable de boucle
         write(STDERR_FILENO, "Erreur : variable manquante après 'for'\n", 41);
         return 1;
-    } else if (strlen(command[1]) != 1) {
+    }
+    if (strlen(command[1]) != 1) {
         char buffer[256];
         int len = snprintf(buffer, sizeof(buffer), "Erreur : la variable de boucle '%s' doit être limitée à un caractère\n", command[1]);
         write(STDERR_FILENO, buffer, len);
         return 1;
-    } else if (command[2] == NULL  || strcmp(command[2], "in") !=  0) {
+    }
+    if (command[2] == NULL  || strcmp(command[2], "in") !=  0) {
         // Mot-clé 'in'
         write(STDERR_FILENO, "Erreur : mot-clé 'in' manquant après la variable de boucle ou espaces incorrects\n", 83);
         return 1;
-    } else if(command[3] == NULL) {
+    }
+    if(command[3] == NULL) {
         // Le répertoire
         write(STDERR_FILENO, "Erreur : répertoire cible manquant après 'in'\n", 48);
         return 1;
-    } else if (command[4] == NULL || strcmp(command[4], "{") != 0) {
+    }
+    if (command[4] == NULL || strcmp(command[4], "{") != 0) {
         // Accolade ouvrante {
         write(STDERR_FILENO, "Erreur : '{' manquante ou mal positionnée pour ouvrir la commande structurée \n", 80);
         return 1;
@@ -53,17 +60,62 @@ int for_syntax ( char** command ) {
         if (command[i] == NULL) {
             write(STDERR_FILENO, "Erreur : '}' manquant pour fermer la commande structurée ou espaces incorrects\n", 80);
             return 1;
-        } else { return 0 ;}
+        } 
+        return 0;
     }
 }
 
 int for_loop(char** command){
 
-    if (for_syntax(command) == 1 ) return 1 ;
+    int argc = 0;
+    int opt;
+    bool recursive, hidden, type, extension, parallelism;
+
+    // calculate argc
+    while (command[argc] != NULL) {
+        argc++;
+    }
     
+
     char var = command[1][0]; // variable (only one letter)
     char* directory = command[3]; 
-    char* cmd = command[5];
+
+    optind = 4;
+
+    while ((opt = getopt(argc, command, "Are:t:p:")) != -1) {
+        switch (opt) {
+            case 'A':
+                hidden = true;
+                printf("option A: hidden = %B\n", hidden);
+                break;
+            case 'r':
+                recursive = true;
+                printf("option r: recursive = %B\n", recursive);
+                break;
+            case 'e':
+                extension = true;
+                printf("option e: extension = %B\n", extension);
+                break;
+            case 't':
+                type = true;
+                printf("option t: type = %B\n", type);
+                break;
+            case 'p':
+                parallelism = true;
+                printf("option p: parallelism = %B\n", parallelism);
+                break;
+            case '?':
+                printf("Usage: %s [-A] [-r] [-e] [-t] [-p]\n", command[0]);
+                break;
+        }
+    }
+
+    // syntax check
+    // if (for_syntax(command) == 1 ) return 1 ;
+    // command[optind] is "{"
+    optind++;
+    char* cmd = command[optind]; // command to execute
+    printf("cmd: %s\n", cmd);
 
     struct dirent *entry;
     DIR *dp = opendir(directory);
@@ -75,7 +127,7 @@ int for_loop(char** command){
 
     while ((entry = readdir(dp)) != NULL) {
         // Skip hidden files and directories (those starting with '.')
-        if (entry->d_name[0] == '.') {
+        if (!hidden && entry->d_name[0] == '.') {
             continue;
         }
 
@@ -95,13 +147,13 @@ int for_loop(char** command){
             char* new_command[10] = {0};
             new_command[0] = cmd;
             size_t i = 1;
-            while (command[i+5] != NULL && i < 10 && strcmp(command[i+5], "}") != 0) {
-                if (command[i+5][0] == '$' && command[i+5][1] == var) {
+            while (command[i+optind] != NULL && i < 10 && strcmp(command[i+optind], "}") != 0) {
+                if (command[i+optind][0] == '$' && command[i+optind][1] == var) {
                     new_command[i] = full_path;
                     i++;
                     continue;
                 }
-                new_command[i] = command[i+5];
+                new_command[i] = command[i+optind];
                 i++;
             }
 
