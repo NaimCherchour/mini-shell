@@ -17,7 +17,7 @@
 #include "../headers/handler.h" // pour execute_command
 #include "../headers/prompt.h" // pour last_status
 
-int for_syntax ( char** command ) {
+int for_syntax (char** command, int optind) {
         // Vérification de la syntaxe de la commande for
     if (command[0] == NULL || strcmp(command[0], "for") != 0) {
         write(STDERR_FILENO, "Erreur : la commande doit commencer par 'for'\n", 47);
@@ -44,13 +44,13 @@ int for_syntax ( char** command ) {
         write(STDERR_FILENO, "Erreur : répertoire cible manquant après 'in'\n", 48);
         return 1;
     }
-    if (command[4] == NULL || strcmp(command[4], "{") != 0) {
+    if (command[optind] == NULL || strcmp(command[optind], "{") != 0) {
         // Accolade ouvrante {
         write(STDERR_FILENO, "Erreur : '{' manquante ou mal positionnée pour ouvrir la commande structurée \n", 80);
         return 1;
     } else {
         // La fin par '}'
-        int i = 5;
+        int i = optind + 1;
         while (command[i] != NULL) {
             if (strcmp(command[i], "}") == 0) {
                 break;
@@ -65,64 +65,13 @@ int for_syntax ( char** command ) {
     }
 }
 
-int for_loop(char** command){
-
-    int argc = 0;
-    int opt;
-    bool recursive, hidden, type, extension, parallelism;
-
-    // calculate argc
-    while (command[argc] != NULL) {
-        argc++;
-    }
-    
-
-    char var = command[1][0]; // variable (only one letter)
-    char* directory = command[3]; 
-
-    optind = 4;
-
-    while ((opt = getopt(argc, command, "Are:t:p:")) != -1) {
-        switch (opt) {
-            case 'A':
-                hidden = true;
-                printf("option A: hidden = %B\n", hidden);
-                break;
-            case 'r':
-                recursive = true;
-                printf("option r: recursive = %B\n", recursive);
-                break;
-            case 'e':
-                extension = true;
-                printf("option e: extension = %B\n", extension);
-                break;
-            case 't':
-                type = true;
-                printf("option t: type = %B\n", type);
-                break;
-            case 'p':
-                parallelism = true;
-                printf("option p: parallelism = %B\n", parallelism);
-                break;
-            case '?':
-                printf("Usage: %s [-A] [-r] [-e] [-t] [-p]\n", command[0]);
-                break;
-        }
-    }
-
-    // syntax check
-    // if (for_syntax(command) == 1 ) return 1 ;
-    // command[optind] is "{"
-    optind++;
-    char* cmd = command[optind]; // command to execute
-    printf("cmd: %s\n", cmd);
-
+void browse_directory(const char *directory, int hidden, int recursive, char var, char *cmd, char **command, int optind) {
     struct dirent *entry;
     DIR *dp = opendir(directory);
 
     if (dp == NULL) {
         perror("opendir");
-        return errno;
+        return;
     }
 
     while ((entry = readdir(dp)) != NULL) {
@@ -143,7 +92,7 @@ int for_loop(char** command){
 
         // Check if it's a regular file
         if (S_ISREG(file_stat.st_mode)) {
-            // construct new char array to store the command and the file
+            // Construct new char array to store the command and the file
             char* new_command[10] = {0};
             new_command[0] = cmd;
             size_t i = 1;
@@ -161,9 +110,79 @@ int for_loop(char** command){
             execute_command(new_command);
         }
 
+        // If recursive flag is set and entry is a directory, browse subdirectory
+        if (recursive && S_ISDIR(file_stat.st_mode)) {
+            // Skip "." and ".." directories
+            if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+                browse_directory(full_path, hidden, recursive, var, cmd, command, optind);
+            }
+        }
+    }
+
+    if (closedir(dp) == -1) {
+        perror("closedir");
+        return;
+    }
+}
+
+int for_loop(char** command){
+
+    int argc = 0;
+    int opt = 0;
+    int recursive, hidden, extension, type, parallelism = 0;
+
+    // calculate argc
+    while (command[argc] != NULL) {
+        argc++;
     }
     
-    closedir(dp);
+    char var = command[1][0]; // variable (only one letter)
+    char* directory = command[3]; 
+
+    optind = 4;
+
+    while ((opt = getopt(argc, command, "Aretp")) != -1) {
+        switch (opt) {
+            case 'A':
+                hidden = 1;
+                // printf("option A: hidden = %d\n", hidden);
+                break;
+            case 'r':
+                recursive = 1;
+                // printf("option r: recursive = %d\n", recursive);
+                break;
+            case 'e':
+                extension = 1;
+                printf("option e: extension = %d\n", extension);
+                break;
+            case 't':
+                type = 1;
+                printf("option t: type = %d\n", type);
+                break;
+            case 'p':
+                parallelism = 1;
+                printf("option p: parallelism = %d\n", parallelism);
+                break;
+            case '?':
+                write(STDERR_FILENO, "Usage: for f in dir [-A] [-r] [-e] [-t] [-p] { cmd $f }\n", 56);
+                return 1;
+        }
+    }
+
+    // syntax check
+    if (for_syntax(command, optind) == 1 ) return 1 ;
+    // command[optind] is "{"
+    char* cmd = command[optind+1]; // command to execute
+
+    // Browse the directory
+    // printf("directory: %s\n", directory);
+    // printf("hidden: %d\n", hidden);
+    // printf("recursive: %d\n", recursive);
+    // printf("var: %c\n", var);
+    // printf("cmd: %s\n", cmd);
+
+    browse_directory(directory, hidden, recursive, var, cmd, command, optind+1);
+
     return EXIT_SUCCESS; 
     
 }
