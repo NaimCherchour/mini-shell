@@ -65,7 +65,7 @@ int for_syntax (char** command, int optind) {
     }
 }
 
-void browse_directory(const char *directory, int hidden, int recursive, char var, char *cmd, char **command, int optind) {
+void browse_directory(const char *directory, int hidden, int recursive, char var, char **command, int optindex) {
     struct dirent *entry;
     DIR *dp = opendir(directory);
 
@@ -76,7 +76,7 @@ void browse_directory(const char *directory, int hidden, int recursive, char var
 
     while ((entry = readdir(dp)) != NULL) {
         // Skip hidden files and directories (those starting with '.')
-        if (!hidden && entry->d_name[0] == '.') {
+        if ( entry->d_name[0] == '.') {
             continue;
         }
 
@@ -94,15 +94,15 @@ void browse_directory(const char *directory, int hidden, int recursive, char var
         if (S_ISREG(file_stat.st_mode)) {
             // Construct new char array to store the command and the file
             char* new_command[10] = {0};
-            new_command[0] = cmd;
+            new_command[0] = command[optindex+1];
             size_t i = 1;
-            while (command[i+optind] != NULL && i < 10 && strcmp(command[i+optind], "}") != 0) {
-                if (command[i+optind][0] == '$' && command[i+optind][1] == var) {
+            while (command[i+optindex] != NULL && i < 10 && strcmp(command[i+optindex], "}") != 0) {
+                if (command[i+optindex][0] == '$' && command[i+optindex][1] == var) {
                     new_command[i] = full_path;
                     i++;
                     continue;
                 }
-                new_command[i] = command[i+optind];
+                new_command[i] = command[i+optindex];
                 i++;
             }
 
@@ -112,9 +112,10 @@ void browse_directory(const char *directory, int hidden, int recursive, char var
 
         // If recursive flag is set and entry is a directory, browse subdirectory
         if (recursive && S_ISDIR(file_stat.st_mode)) {
+            continue;
             // Skip "." and ".." directories
             if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-                browse_directory(full_path, hidden, recursive, var, cmd, command, optind);
+                browse_directory(full_path, hidden, recursive, var, command, optindex);
             }
         }
     }
@@ -126,14 +127,28 @@ void browse_directory(const char *directory, int hidden, int recursive, char var
 }
 
 int for_loop(char** command){
+    // debug print command
+    for (int i = 0; i < 10; i++) {
+        if (command[i] != NULL) {
+            printf("%s ", command[i]);
+        }
+    }
+    printf("\n");
+
+
 
     int argc = 0;
     int opt = 0;
-    int recursive, hidden, extension, type, parallelism = 0;
+    int recursive = 0, hidden =0, extension=0, type=0, parallelism = 0;
 
     // calculate argc
     while (command[argc] != NULL) {
         argc++;
+    }
+
+    if (argc < 4) {
+        write(STDERR_FILENO, "Usage: for f in dir [-A] [-r] [-e] [-t] [-p] { cmd $f }\n", 56);
+        return 1;
     }
     
     char var = command[1][0]; // variable (only one letter)
@@ -144,23 +159,23 @@ int for_loop(char** command){
     while ((opt = getopt(argc, command, "Aretp")) != -1) {
         switch (opt) {
             case 'A':
-                hidden = 1;
-                // printf("option A: hidden = %d\n", hidden);
+                // hidden = 1;
+                printf("option A: hidden = %d\n", hidden);
                 break;
             case 'r':
-                recursive = 1;
-                // printf("option r: recursive = %d\n", recursive);
+                // recursive = 1;
+                printf("option r: recursive = %d\n", recursive);
                 break;
             case 'e':
-                extension = 1;
+                // extension = 1;
                 printf("option e: extension = %d\n", extension);
                 break;
             case 't':
-                type = 1;
+                // type = 1;
                 printf("option t: type = %d\n", type);
                 break;
             case 'p':
-                parallelism = 1;
+                // parallelism = 1;
                 printf("option p: parallelism = %d\n", parallelism);
                 break;
             case '?':
@@ -169,10 +184,20 @@ int for_loop(char** command){
         }
     }
 
+
+    for (int i = optind; i < argc; i++) {
+        printf("argument: %s\n", command[i]);
+    }
+
     // syntax check
     if (for_syntax(command, optind) == 1 ) return 1 ;
     // command[optind] is "{"
-    char* cmd = command[optind+1]; // command to execute
+    if (command[optind] == NULL || strcmp(command[optind], "{") != 0) {
+        write(STDERR_FILENO, "Syntax error : missing '{'.\n", 29);
+        return 1;
+    }
+
+    // char* cmd = command[optind+1]; // command to execute
 
     // Browse the directory
     // printf("directory: %s\n", directory);
@@ -181,7 +206,7 @@ int for_loop(char** command){
     // printf("var: %c\n", var);
     // printf("cmd: %s\n", cmd);
 
-    browse_directory(directory, hidden, recursive, var, cmd, command, optind+1);
+    browse_directory(directory, hidden, recursive, var, command, optind);
 
     return EXIT_SUCCESS; 
     
