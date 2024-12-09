@@ -65,7 +65,17 @@ int for_syntax (char** command, int optindex) {
     }
 }
 
-void browse_directory(const char *directory, int hidden, int recursive, int extension, char* EXT, char var, char **command, int optindex) {
+void do_for(char** command, int optindex, char var, char* full_path, int extension) {
+    char** new_command = constructor(command, optindex, full_path, var, extension);
+    execute_command(new_command);
+
+    for (size_t i = 1; new_command[i] != NULL; i++) {
+            free(new_command[i]);
+    }
+    free(new_command);
+}
+
+void browse_directory(const char *directory, int hidden, int recursive, int extension, char* EXT, int type, char TYPE, char var, char **command, int optindex) {
     struct dirent *entry;
     DIR *dp = opendir(directory);
 
@@ -91,28 +101,22 @@ void browse_directory(const char *directory, int hidden, int recursive, int exte
 
         // Get file information
         struct stat file_stat;
-        if (stat(full_path, &file_stat) == -1) {
+        if (lstat(full_path, &file_stat) == -1) {
             perror("stat");
             continue;
         }
 
-        // Check if it's a regular file
-        if (S_ISREG(file_stat.st_mode)) {
-            // Handle the command
-            char** new_command = constructor(command, optindex, full_path, var, extension);
-            execute_command(new_command);
+        // type check
+        if ((!type && S_ISREG(file_stat.st_mode) )|| (type && TYPE == 'f' && S_ISREG(file_stat.st_mode))) do_for(command, optindex, var, full_path, extension);
+        if (type && TYPE == 'd' && S_ISDIR(file_stat.st_mode)) do_for(command, optindex, var, full_path, extension);
+        if (type && TYPE == 'l' && S_ISLNK(file_stat.st_mode)) do_for(command, optindex, var, full_path, extension);
+        if (type && TYPE == 'p' && S_ISFIFO(file_stat.st_mode)) do_for(command, optindex, var, full_path, extension);
 
-            for (size_t i = 1; new_command[i] != NULL; i++) {
-                free(new_command[i]);
-            }
-            free(new_command);
-        }
-
-        // If recursive flag is set and entry is a directory, browse subdirectory
+        // recursion check
         if (recursive && S_ISDIR(file_stat.st_mode)) {
             // Skip "." and ".." directories
             if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-                browse_directory(full_path, hidden, recursive, extension, EXT, var, command, optindex);
+                browse_directory(full_path, hidden, recursive, extension, EXT, type, TYPE, var, command, optindex);
             }
         }
     }
@@ -202,7 +206,7 @@ int for_loop(char** command){
     int argc = 0;
     int opt = 0;
     int recursive = 0, hidden =0, extension=0, type=0, parallelism = 0;
-    char* EXT, *TYPE, *MAX_THREADS;
+    char* EXT, TYPE, *MAX_THREADS;
 
     // calculate argc
     while (command[argc] != NULL) {
@@ -223,29 +227,25 @@ int for_loop(char** command){
         switch (opt) {
             case 'A':
                 hidden++;
-                // printf("option A: hidden = %d\n", hidden);
                 break;
             case 'r':
                 recursive++;
-                // printf("option r: recursive = %d\n", recursive);
                 break;
             case 'e':
                 extension++;
                 EXT = optarg;
-                // printf("option e: extension = %d\n", extension);
-                // printf("option e: EXT = %s\n", EXT);
                 break;
             case 't':
                 type++;
-                TYPE = optarg;
-                // printf("option t: type = %d\n", type);
-                printf("option t: TYPE = %s\n", TYPE);
+                TYPE = optarg[0];
+                if (TYPE != 'd' && TYPE != 'f' && TYPE != 'l' && TYPE != 'p') {
+                    write(STDERR_FILENO, "Error: type must be 'd' or 'f' or 'l' or 'p'\n", 45);
+                    return 1;
+                }
                 break;
             case 'p':
                 parallelism++;
                 MAX_THREADS = optarg;
-                // printf("option p: parallelism = %d\n", parallelism);
-                printf("option p: MAX_THREADS = %s\n", MAX_THREADS);
                 break;
             case '?':
                 write(STDERR_FILENO, "Usage: for f in dir [-A] [-r] [-e] [-t] [-p] { cmd $f }\n", 56);
@@ -258,7 +258,7 @@ int for_loop(char** command){
     // syntax check
     if (for_syntax(command, optind) == 1 ) return 1 ;
 
-    browse_directory(directory, hidden, recursive, extension, EXT, var, command, optind);
+    browse_directory(directory, hidden, recursive, extension, EXT, type, TYPE, var, command, optind);
 
     return EXIT_SUCCESS; 
     
