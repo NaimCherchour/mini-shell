@@ -17,6 +17,9 @@
 #include "../headers/handler.h" // pour execute_command
 #include "../headers/prompt.h" // pour last_status
 
+// Macros
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 int for_syntax (char** command, int optindex) {
         // Vérification de la syntaxe de la commande for
     if (command[0] == NULL || strcmp(command[0], "for") != 0) {
@@ -65,23 +68,25 @@ int for_syntax (char** command, int optindex) {
     }
 }
 
-void do_for(char** command, int optindex, char var, char* full_path, int extension) {
+int do_for(char** command, int optindex, char var, char* full_path, int extension) {
     char** new_command = constructor(command, optindex, full_path, var, extension);
-    execute_command(new_command);
+    int return_val = execute_command(new_command);
 
     for (size_t i = 1; new_command[i] != NULL; i++) {
             free(new_command[i]);
     }
     free(new_command);
+
+    return return_val;
 }
 
-void browse_directory(const char *directory, int hidden, int recursive, int extension, char* EXT, int type, char TYPE, char var, char **command, int optindex) {
+int browse_directory(const char *directory, int hidden, int recursive, int extension, char* EXT, int type, char TYPE, char var, char **command, int optindex, int return_val) {
     struct dirent *entry;
     DIR *dp = opendir(directory);
 
     if (dp == NULL) {
         perror("opendir");
-        return;
+        return 2;
     }
 
     while ((entry = readdir(dp)) != NULL) {
@@ -106,25 +111,28 @@ void browse_directory(const char *directory, int hidden, int recursive, int exte
             continue;
         }
 
+
         // type check
-        if ((!type && S_ISREG(file_stat.st_mode) )|| (type && TYPE == 'f' && S_ISREG(file_stat.st_mode))) do_for(command, optindex, var, full_path, extension);
-        if (type && TYPE == 'd' && S_ISDIR(file_stat.st_mode)) do_for(command, optindex, var, full_path, extension);
-        if (type && TYPE == 'l' && S_ISLNK(file_stat.st_mode)) do_for(command, optindex, var, full_path, extension);
-        if (type && TYPE == 'p' && S_ISFIFO(file_stat.st_mode)) do_for(command, optindex, var, full_path, extension);
+        if ((!type && S_ISREG(file_stat.st_mode) )|| (type && TYPE == 'f' && S_ISREG(file_stat.st_mode))) return_val = MAX(return_val, do_for(command, optindex, var, full_path, extension));
+        if (type && TYPE == 'd' && S_ISDIR(file_stat.st_mode)) return_val = MAX(return_val, do_for(command, optindex, var, full_path, extension));
+        if (type && TYPE == 'l' && S_ISLNK(file_stat.st_mode)) return_val = MAX(return_val, do_for(command, optindex, var, full_path, extension));
+        if (type && TYPE == 'p' && S_ISFIFO(file_stat.st_mode)) return_val = MAX(return_val, do_for(command, optindex, var, full_path, extension));
 
         // recursion check
         if (recursive && S_ISDIR(file_stat.st_mode)) {
             // Skip "." and ".." directories
             if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-                browse_directory(full_path, hidden, recursive, extension, EXT, type, TYPE, var, command, optindex);
+                return_val = MAX(return_val, browse_directory(full_path, hidden, recursive, extension, EXT, type, TYPE, var, command, optindex, return_val));
             }
         }
     }
 
     if (closedir(dp) == -1) {
         perror("closedir");
-        return;
+        return 2;
     }
+
+    return return_val;
 }
 
 char* replace_var_with_path(const char* str, const char* var, const char* replacement) {
@@ -206,7 +214,7 @@ int for_loop(char** command){
     int argc = 0;
     int opt = 0;
     int recursive = 0, hidden =0, extension=0, type=0, parallelism = 0;
-    char* EXT, TYPE, *MAX_THREADS;
+    char* EXT, TYPE;
 
     // calculate argc
     while (command[argc] != NULL) {
@@ -245,7 +253,7 @@ int for_loop(char** command){
                 break;
             case 'p':
                 parallelism++;
-                MAX_THREADS = optarg;
+                // MAX_THREADS = optarg;
                 break;
             case '?':
                 write(STDERR_FILENO, "Usage: for f in dir [-A] [-r] [-e] [-t] [-p] { cmd $f }\n", 56);
@@ -258,9 +266,8 @@ int for_loop(char** command){
     // syntax check
     if (for_syntax(command, optind) == 1 ) return 1 ;
 
-    browse_directory(directory, hidden, recursive, extension, EXT, type, TYPE, var, command, optind);
+    return browse_directory(directory, hidden, recursive, extension, EXT, type, TYPE, var, command, optind, 0);
 
-    return EXIT_SUCCESS; 
     
 }
 
