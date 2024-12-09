@@ -95,16 +95,21 @@ void browse_directory(const char *directory, int hidden, int recursive, char var
             // Construct new char array to store the command and the file
             char* new_command[10] = {0};
             new_command[0] = command[optindex+1];
+            // printf("new_command[0] = %s\n", new_command[0]);
+
             size_t i = 1;
-            while (command[i+optindex] != NULL && i < 10 && strcmp(command[i+optindex], "}") != 0) {
-                if (command[i+optindex][0] == '$' && command[i+optindex][1] == var) {
+            while (command[i+optindex+1] != NULL && i < 10 && strcmp(command[i+optindex+1], "}") != 0) {
+                if (command[i+optindex+1][0] == '$' && command[i+optindex+1][1] == var) {
                     new_command[i] = full_path;
+                    // printf("new_command[%ld] = %s\n", i, new_command[i]);
                     i++;
                     continue;
                 }
-                new_command[i] = command[i+optindex];
+                new_command[i] = command[i+optindex+1];
+                // printf("new_command[%ld] = %s\n", i, new_command[i]);
                 i++;
             }
+
 
             // Handle the command
             execute_command(new_command);
@@ -127,6 +132,7 @@ void browse_directory(const char *directory, int hidden, int recursive, char var
 
 int for_loop(char** command){
 
+
     int argc = 0;
     int opt = 0;
     int recursive = 0, hidden =0, extension=0, type=0, parallelism = 0;
@@ -135,6 +141,17 @@ int for_loop(char** command){
     while (command[argc] != NULL) {
         argc++;
     }
+
+    //  // Debug: Print each argument with ASCII values
+    // printf("Debug: Printing each command token and ASCII values:\n");
+    // for (int i = 0; i < argc; i++) {
+    //     printf("command[%d] = '", i);
+    //     for (int j = 0; j < strlen(command[i]); j++) {
+    //         printf("%c (0x%x) ", command[i][j], command[i][j]);
+    //     }
+    //     printf("'\n");
+    // }
+
 
     if (argc < 4) {
         write(STDERR_FILENO, "Usage: for f in dir [-A] [-r] [-e] [-t] [-p] { cmd $f }\n", 56);
@@ -150,28 +167,29 @@ int for_loop(char** command){
         switch (opt) {
             case 'A':
                 hidden++;
-                printf("option A: hidden = %d\n", hidden);
+                // printf("option A: hidden = %d\n", hidden);
                 break;
             case 'r':
                 recursive++;
-                printf("option r: recursive = %d\n", recursive);
+                // printf("option r: recursive = %d\n", recursive);
                 break;
             case 'e':
                 extension++;
-                printf("option e: extension = %d\n", extension);
+                // printf("option e: extension = %d\n", extension);
                 break;
             case 't':
                 type++;
-                printf("option t: type = %d\n", type);
+                // printf("option t: type = %d\n", type);
                 break;
             case 'p':
                 parallelism++;
-                printf("option p: parallelism = %d\n", parallelism);
+                // printf("option p: parallelism = %d\n", parallelism);
                 break;
             case '?':
                 write(STDERR_FILENO, "Usage: for f in dir [-A] [-r] [-e] [-t] [-p] { cmd $f }\n", 56);
                 return 1;
         }
+        
     }
 
 
