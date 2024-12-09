@@ -65,7 +65,7 @@ int for_syntax (char** command, int optindex) {
     }
 }
 
-void browse_directory(const char *directory, int hidden, int recursive, char var, char **command, int optindex) {
+void browse_directory(const char *directory, int hidden, int recursive, int extension, char* EXT, char var, char **command, int optindex) {
     struct dirent *entry;
     DIR *dp = opendir(directory);
 
@@ -75,9 +75,15 @@ void browse_directory(const char *directory, int hidden, int recursive, char var
     }
 
     while ((entry = readdir(dp)) != NULL) {
-        // Skip hidden files and directories (those starting with '.')
+        // hidden files check
         if (!hidden && entry->d_name[0] == '.') {
             continue;
+        }
+
+        // extension check
+        if (extension) {
+            const char* dot = strrchr(entry->d_name, '.');
+            if (!dot || strcmp(EXT, dot+1) != 0) continue;
         }
 
         char full_path[1024];
@@ -93,9 +99,9 @@ void browse_directory(const char *directory, int hidden, int recursive, char var
         // Check if it's a regular file
         if (S_ISREG(file_stat.st_mode)) {
             // Handle the command
-            char** new_command = constructor(command, optindex, full_path, var);
+            char** new_command = constructor(command, optindex, full_path, var, extension);
             execute_command(new_command);
-            
+
             for (size_t i = 1; new_command[i] != NULL; i++) {
                 free(new_command[i]);
             }
@@ -106,7 +112,7 @@ void browse_directory(const char *directory, int hidden, int recursive, char var
         if (recursive && S_ISDIR(file_stat.st_mode)) {
             // Skip "." and ".." directories
             if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-                browse_directory(full_path, hidden, recursive, var, command, optindex);
+                browse_directory(full_path, hidden, recursive, extension, EXT, var, command, optindex);
             }
         }
     }
@@ -163,7 +169,7 @@ char* replace_var_with_path(const char* str, const char* var, const char* replac
     return result;
 }
 
-char** constructor(char** command, int optindex, char* full_path, char var) {
+char** constructor(char** command, int optindex, char* full_path, char var, int extension) {
     // Allocate memory for the new command array
     char** new_command = malloc(10 * sizeof(char*));
     if (new_command == NULL) {
@@ -175,7 +181,15 @@ char** constructor(char** command, int optindex, char* full_path, char var) {
 
     size_t i = 1;
     char var_str[3] = {'$', var, '\0'}; 
-    while (command[i + optindex + 1] != NULL && i < 10 && strcmp(command[i + optindex + 1], "}") != 0) {
+
+    if (extension) {
+    char* dot = strrchr(full_path, '.');
+    if (dot) {
+        *dot = '\0';  // Truncate the string at the dot
+    }
+}
+
+    while (command[i + optindex + 1] != NULL && i < 10 && strcmp(command[i + optindex + 1], "}") != 0) {  
         new_command[i] = replace_var_with_path(command[i + optindex + 1], var_str, full_path);
         i++;
     }
@@ -185,8 +199,6 @@ char** constructor(char** command, int optindex, char* full_path, char var) {
 }
 
 int for_loop(char** command){
-
-
     int argc = 0;
     int opt = 0;
     int recursive = 0, hidden =0, extension=0, type=0, parallelism = 0;
@@ -196,17 +208,6 @@ int for_loop(char** command){
     while (command[argc] != NULL) {
         argc++;
     }
-
-    //  // Debug: Print each argument with ASCII values
-    // printf("Debug: Printing each command token and ASCII values:\n");
-    // for (int i = 0; i < argc; i++) {
-    //     printf("command[%d] = '", i);
-    //     for (int j = 0; j < strlen(command[i]); j++) {
-    //         printf("%c (0x%x) ", command[i][j], command[i][j]);
-    //     }
-    //     printf("'\n");
-    // }
-
 
     if (argc < 4) {
         write(STDERR_FILENO, "Usage: for f in dir [-A] [-r] [-e] [-t] [-p] { cmd $f }\n", 56);
@@ -232,7 +233,7 @@ int for_loop(char** command){
                 extension++;
                 EXT = optarg;
                 // printf("option e: extension = %d\n", extension);
-                printf("option e: EXT = %s\n", EXT);
+                // printf("option e: EXT = %s\n", EXT);
                 break;
             case 't':
                 type++;
@@ -257,7 +258,7 @@ int for_loop(char** command){
     // syntax check
     if (for_syntax(command, optind) == 1 ) return 1 ;
 
-    browse_directory(directory, hidden, recursive, var, command, optind);
+    browse_directory(directory, hidden, recursive, extension, EXT, var, command, optind);
 
     return EXIT_SUCCESS; 
     

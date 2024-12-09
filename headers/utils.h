@@ -9,7 +9,7 @@ int for_syntax (char** command, int optind);
 
 char* replace_var_with_path(const char* str, const char* var, const char* replacement);
 
-char** constructor(char** command, int optindex, char* full_path, char var);
+char** constructor(char** command, int optindex, char* full_path, char var, int extension);
 
 int for_loop(char** command); // commande for et retourne la valeur de retour 
 
