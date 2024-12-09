@@ -92,27 +92,14 @@ void browse_directory(const char *directory, int hidden, int recursive, char var
 
         // Check if it's a regular file
         if (S_ISREG(file_stat.st_mode)) {
-            // Construct new char array to store the command and the file
-            char* new_command[10] = {0};
-            new_command[0] = command[optindex+1];
-            // printf("new_command[0] = %s\n", new_command[0]);
-
-            size_t i = 1;
-            while (command[i+optindex+1] != NULL && i < 10 && strcmp(command[i+optindex+1], "}") != 0) {
-                if (command[i+optindex+1][0] == '$' && command[i+optindex+1][1] == var) {
-                    new_command[i] = full_path;
-                    // printf("new_command[%ld] = %s\n", i, new_command[i]);
-                    i++;
-                    continue;
-                }
-                new_command[i] = command[i+optindex+1];
-                // printf("new_command[%ld] = %s\n", i, new_command[i]);
-                i++;
-            }
-
-
             // Handle the command
+            char** new_command = constructor(command, optindex, full_path, var);
             execute_command(new_command);
+            
+            for (size_t i = 1; new_command[i] != NULL; i++) {
+                free(new_command[i]);
+            }
+            free(new_command);
         }
 
         // If recursive flag is set and entry is a directory, browse subdirectory
@@ -130,12 +117,80 @@ void browse_directory(const char *directory, int hidden, int recursive, char var
     }
 }
 
+char* replace_var_with_path(const char* str, const char* var, const char* replacement) {
+    char* result;
+    char* ins;
+    char* tmp;
+    size_t len_var;
+    size_t len_replacement;
+    size_t len_front;
+    size_t count;
+
+    if (!str || !var) {
+        return NULL;
+    }
+    len_var = strlen(var);
+    if (len_var == 0) {
+        return NULL;
+    }
+    if (!replacement) {
+        replacement = "";
+    }
+    len_replacement = strlen(replacement);
+
+    ins = (char*)str;
+    for (count = 0; (tmp = strstr(ins, var)); ++count) {
+        ins = tmp + len_var;
+    }
+
+    tmp = result = malloc(strlen(str) + (len_replacement - len_var) * count + 1);
+
+    if (!result) {
+        return NULL;
+    }
+
+    while (count--) {
+        ins = strstr(str, var);
+        len_front = ins - str;
+        memcpy(tmp, str, len_front);
+        tmp += len_front;
+        memcpy(tmp, replacement, len_replacement);
+        tmp += len_replacement;
+
+        str += len_front + len_var;
+    }
+    strcpy(tmp, str);
+    return result;
+}
+
+char** constructor(char** command, int optindex, char* full_path, char var) {
+    // Allocate memory for the new command array
+    char** new_command = malloc(10 * sizeof(char*));
+    if (new_command == NULL) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+
+    new_command[0] = command[optindex + 1];
+
+    size_t i = 1;
+    char var_str[3] = {'$', var, '\0'}; 
+    while (command[i + optindex + 1] != NULL && i < 10 && strcmp(command[i + optindex + 1], "}") != 0) {
+        new_command[i] = replace_var_with_path(command[i + optindex + 1], var_str, full_path);
+        i++;
+    }
+
+    new_command[i] = NULL; // Null-terminate the array
+    return new_command;
+}
+
 int for_loop(char** command){
 
 
     int argc = 0;
     int opt = 0;
     int recursive = 0, hidden =0, extension=0, type=0, parallelism = 0;
+    char* EXT, *TYPE, *MAX_THREADS;
 
     // calculate argc
     while (command[argc] != NULL) {
@@ -163,7 +218,7 @@ int for_loop(char** command){
 
     optind = 4;
 
-    while ((opt = getopt(argc, command, "Aretp")) != -1) {
+    while ((opt = getopt(argc, command, "Are:t:p:")) != -1) {
         switch (opt) {
             case 'A':
                 hidden++;
@@ -175,15 +230,21 @@ int for_loop(char** command){
                 break;
             case 'e':
                 extension++;
+                EXT = optarg;
                 // printf("option e: extension = %d\n", extension);
+                printf("option e: EXT = %s\n", EXT);
                 break;
             case 't':
                 type++;
+                TYPE = optarg;
                 // printf("option t: type = %d\n", type);
+                printf("option t: TYPE = %s\n", TYPE);
                 break;
             case 'p':
                 parallelism++;
+                MAX_THREADS = optarg;
                 // printf("option p: parallelism = %d\n", parallelism);
+                printf("option p: MAX_THREADS = %s\n", MAX_THREADS);
                 break;
             case '?':
                 write(STDERR_FILENO, "Usage: for f in dir [-A] [-r] [-e] [-t] [-p] { cmd $f }\n", 56);
