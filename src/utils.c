@@ -83,6 +83,7 @@ int do_for(char** command, int optindex, char var, char* full_path, int extensio
 int browse_directory(const char *directory, int hidden, int recursive, int extension, char* EXT, int type, char TYPE, char var, char **command, int optindex, int return_val) {
     struct dirent *entry;
     DIR *dp = opendir(directory);
+    int result = return_val;
 
     if (dp == NULL) {
         perror("opendir");
@@ -113,10 +114,14 @@ int browse_directory(const char *directory, int hidden, int recursive, int exten
 
 
         // type check
-        if ((!type && S_ISREG(file_stat.st_mode) )|| (type && TYPE == 'f' && S_ISREG(file_stat.st_mode))) return_val = MAX(return_val, do_for(command, optindex, var, full_path, extension));
-        if (type && TYPE == 'd' && S_ISDIR(file_stat.st_mode)) return_val = MAX(return_val, do_for(command, optindex, var, full_path, extension));
-        if (type && TYPE == 'l' && S_ISLNK(file_stat.st_mode)) return_val = MAX(return_val, do_for(command, optindex, var, full_path, extension));
-        if (type && TYPE == 'p' && S_ISFIFO(file_stat.st_mode)) return_val = MAX(return_val, do_for(command, optindex, var, full_path, extension));
+        if ((!type && S_ISREG(file_stat.st_mode) )|| 
+        (type && TYPE == 'f' && S_ISREG(file_stat.st_mode)) || 
+        (type && TYPE == 'd' && S_ISDIR(file_stat.st_mode)) ||
+        (type && TYPE == 'l' && S_ISLNK(file_stat.st_mode)) || 
+        (type && TYPE == 'p' && S_ISFIFO(file_stat.st_mode)) ) {
+            result =  do_for(command, optindex, var, full_path, extension);
+            return_val = MAX(return_val, result);
+        }
 
         // recursion check
         if (recursive && S_ISDIR(file_stat.st_mode)) {
@@ -214,7 +219,7 @@ int for_loop(char** command){
     int argc = 0;
     int opt = 0;
     int recursive = 0, hidden =0, extension=0, type=0, parallelism = 0;
-    char* EXT, TYPE;
+    char* EXT, TYPE, *MAX_THREADS;
 
     // calculate argc
     while (command[argc] != NULL) {
@@ -253,7 +258,7 @@ int for_loop(char** command){
                 break;
             case 'p':
                 parallelism++;
-                // MAX_THREADS = optarg;
+                MAX_THREADS = optarg;
                 break;
             case '?':
                 write(STDERR_FILENO, "Usage: for f in dir [-A] [-r] [-e] [-t] [-p] { cmd $f }\n", 56);
