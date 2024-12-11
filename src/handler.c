@@ -16,50 +16,50 @@
 
 #define MAX_COMMANDS 5
 #define MAX_ARGS 10
+#define INITIAL_SIZE 15
 
-
-// Lire la ligne de commande
 char** parse_input(char* prompt) {
-    // Allocate memory for arguments
-    char** args = malloc(10 * sizeof(char*)); // max 10 arguments
+    int size = INITIAL_SIZE;
+    char** args = malloc(size * sizeof(char*));
     if (args == NULL) {
         perror("malloc");
         exit(EXIT_FAILURE);
     }
 
-    // Separate the command and the arguments
-    char* arg = strtok(prompt, " ");
     int arg_count = 0;
+    char* token = strtok(prompt, " ");
 
-    while (arg != NULL) {
-        args[arg_count] = arg;
-        arg_count++;
-
-        if (arg_count >= 10) {
-            // realloc the arguments array
-            char** temp = realloc(args, 2 * arg_count * sizeof(char*));
+    while (token != NULL) {
+        if (arg_count >= size - 1) {
+            size *= 2;
+            char** temp = realloc(args, size * sizeof(char*));
             if (temp == NULL) {
                 perror("realloc");
+                free(args);
                 exit(EXIT_FAILURE);
             }
-
             args = temp;
-
-            // Set the rest of the array to NULL
-            for (int i = arg_count; i < 2 * arg_count; i++) {
-                args[i] = NULL;
-            }
-
         }
 
-        arg = strtok(NULL, " ");
+        args[arg_count] = strdup(token);
+        if (args[arg_count] == NULL) {
+            perror("strdup");
+            for (int i = 0; i < arg_count; i++) {
+                free(args[i]);
+            }
+            free(args);
+            exit(EXIT_FAILURE);
+        }
+
+        arg_count++;
+        token = strtok(NULL, " ");
     }
 
-    // Null-terminate the arguments array
     args[arg_count] = NULL;
-
     return args;
 }
+
+
 
 
 // cuts-out commands from the parsed prompt
