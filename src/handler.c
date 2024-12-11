@@ -30,7 +30,6 @@ char** parse_input(char* prompt) {
     char* token = strtok(prompt, " ");
 
     while (token != NULL) {
-        // Reallocate if needed
         if (arg_count >= size - 1) {
             size *= 2;
             char** temp = realloc(args, size * sizeof(char*));
@@ -42,10 +41,12 @@ char** parse_input(char* prompt) {
             args = temp;
         }
 
-        // Copy the token
         args[arg_count] = strdup(token);
         if (args[arg_count] == NULL) {
             perror("strdup");
+            for (int i = 0; i < arg_count; i++) {
+                free(args[i]);
+            }
             free(args);
             exit(EXIT_FAILURE);
         }
@@ -54,9 +55,10 @@ char** parse_input(char* prompt) {
         token = strtok(NULL, " ");
     }
 
-    args[arg_count] = NULL; // Null-terminate the array
+    args[arg_count] = NULL;
     return args;
 }
+
 
 
 

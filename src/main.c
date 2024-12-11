@@ -68,7 +68,10 @@ int main() {
             add_history(line); // On ajoute la commande à l'historique
             char** command = parse_input(line); // parser la commande
             last_status = execute_command(command); // exécuter les commandes
-            free(command); // On libère la mémoire allouée pour les arguments
+            for (int i = 0; command[i] != NULL; i++) {
+                free(command[i]);
+            }
+            free(command);
         }
 
         free(line); // On libère la mémoire allouée par readline
