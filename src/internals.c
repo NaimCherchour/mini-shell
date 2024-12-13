@@ -13,10 +13,27 @@
 
 char rep_precedent[PATH_MAX]; // on sauvegarde le répertoire précédent
 
+
+int nb_arguments (char **args ) {
+    // Vérifier le nombre d'arguments
+    int argc = 0;
+    while (args[argc] != NULL) {
+        argc++;
+    }
+    return argc;
+}
+
 int cd (char **args) {
 
     char *rep_destinataire;
     char rep_courant[PATH_MAX];
+
+    int argc = nb_arguments(args); // calculer le nombre d'arguments 
+
+    if (argc > 2) {
+        write(STDERR_FILENO, "cd: too many arguments\n", 23);
+        return 1;
+    }
 
     if (args[1] == NULL) {     // Si l'utilisateur entre que "cd", on va vers le répertoire HOME
         rep_destinataire = getenv("HOME");
@@ -84,6 +101,8 @@ int ftype(char **args) {
 
 int pwd() {
     char cwd[PATH_MAX];
+
+    // Vérifier le nombre d'arguments dans execute_command
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
         char buffer[PATH_MAX+1];
         snprintf(buffer, sizeof(buffer), "%s\n", cwd);
@@ -103,11 +122,8 @@ int exit_shell(char **args) {
         exit(last_status);
     }
 
-
     // Compter le nombre d'arguments
-    while (args[argc] != NULL) {
-        argc++;
-    }
+    argc = nb_arguments(args);
 
     switch (argc) {
         case 1:
