@@ -1,4 +1,8 @@
 obj
+log
+.gitignore
+tests
+test.sh
 src/fsh
 *.o
 fsh
