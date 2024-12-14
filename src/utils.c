@@ -87,7 +87,7 @@ int browse_directory(const char *directory, int hidden, int recursive, int exten
 
     if (dp == NULL) {
         perror("opendir");
-        return 2;
+        return 1;
     }
 
     while ((entry = readdir(dp)) != NULL) {
@@ -112,6 +112,11 @@ int browse_directory(const char *directory, int hidden, int recursive, int exten
             continue;
         }
 
+        // skip . and ..
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
 
         // type check
         if ((!type )|| 
@@ -125,11 +130,8 @@ int browse_directory(const char *directory, int hidden, int recursive, int exten
 
         // recursion check
         if (recursive && S_ISDIR(file_stat.st_mode)) {
-            // Skip "." and ".." directories
-            if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-                result = browse_directory(full_path, hidden, recursive, extension, EXT, type, TYPE, var, command, optindex, return_val);
-                return_val = MAX(return_val, result);
-            }
+            result = browse_directory(full_path, hidden, recursive, extension, EXT, type, TYPE, var, command, optindex, return_val);
+            return_val = MAX(return_val, result);
         }
     }
 
