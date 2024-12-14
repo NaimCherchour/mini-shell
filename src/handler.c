@@ -122,14 +122,7 @@ int execute_command(char** command) {
     // Commandes Internes
     if (strcmp(command[0],"cd") == 0) return cd(command);
     if (strcmp(command[0],"ftype") == 0) return ftype(command);
-    if (strcmp(command[0], "pwd") == 0) {
-        //Si des arguments supplémentaires sont données à `pwd`
-        if (command[1] != NULL) {
-            write(STDERR_FILENO, "pwd: too many arguments\n", 24);
-            return 1;
-        }
-        return pwd();
-    }
+    if (strcmp(command[0], "pwd") == 0) return pwd(command);
     if (strcmp(command[0], "exit") == 0) return exit_shell(command);
     if (strcmp(command[0], "for") == 0) return for_loop(command);
     if (strcmp(command[0], "if") == 0) return if_else(command);
