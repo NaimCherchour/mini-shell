@@ -15,7 +15,7 @@ int cd(char **args);
 //directory, regular file , symbolic link, named pipe, other.
 int ftype(char **args);
 
-int pwd();  // Affiche le répertoire courant
+int pwd(char **args);  // Affiche le répertoire courant
 
 int exit_shell(char **args);  // Termine le shell avec un code de sortie
 

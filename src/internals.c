@@ -99,7 +99,14 @@ int ftype(char **args) {
     return 0;
 }
 
-int pwd() {
+int pwd(char **args) {
+
+    int argc = nb_arguments(args);
+    if (argc > 1) {
+        write(STDERR_FILENO, "pwd: too many arguments\n", 24);
+        return 1;
+    }
+
     char cwd[PATH_MAX];
 
     // Vérifier le nombre d'arguments dans execute_command

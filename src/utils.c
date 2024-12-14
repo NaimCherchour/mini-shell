@@ -114,7 +114,7 @@ int browse_directory(const char *directory, int hidden, int recursive, int exten
 
 
         // type check
-        if ((!type)|| 
+        if ((!type )|| 
         (type && TYPE == 'f' && S_ISREG(file_stat.st_mode)) || 
         (type && TYPE == 'd' && S_ISDIR(file_stat.st_mode)) ||
         (type && TYPE == 'l' && S_ISLNK(file_stat.st_mode)) || 
