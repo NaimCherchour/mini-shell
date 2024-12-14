@@ -17,7 +17,7 @@ char *generate_prompt() {
     char *prompt;
 
 
-    if (last_status == 255) {
+    if (last_status < 0) {
         snprintf(status_text, sizeof(status_text), "SIG");
         strncpy(status_color, COLOR_RED, sizeof(status_color));
     } else {

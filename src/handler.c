@@ -122,7 +122,14 @@ int execute_command(char** command) {
     // Commandes Internes
     if (strcmp(command[0],"cd") == 0) return cd(command);
     if (strcmp(command[0],"ftype") == 0) return ftype(command);
-    if (strcmp(command[0], "pwd") == 0) return pwd();
+    if (strcmp(command[0], "pwd") == 0) {
+        //Si des arguments supplémentaires sont données à `pwd`
+        if (command[1] != NULL) {
+            write(STDERR_FILENO, "pwd: too many arguments\n", 24);
+            return 1;
+        }
+        return pwd();
+    }
     if (strcmp(command[0], "exit") == 0) return exit_shell(command);
     if (strcmp(command[0], "for") == 0) return for_loop(command);
     if (strcmp(command[0], "if") == 0) return if_else(command);
@@ -167,14 +174,14 @@ int execute_command(char** command) {
         perror(command[0]);
         exit(EXIT_FAILURE);
     } else if (pid > 0) {
-                int wstatus;
+        int wstatus;
         waitpid(pid, &wstatus, 0);  // Attendre la fin du processus enfant
         if (WIFEXITED(wstatus)) {
             // Si le processus enfant s'est terminé normalement
             return WEXITSTATUS(wstatus); // Valeur de retour du programme exécuté
         } else if (WIFSIGNALED(wstatus)) {
             // Si le processus enfant a été tué par un signal
-            return 255;  // TODO : 255 ou bien code de retour du signal (128 + numéro du signal) ?
+            return -WIFSIGNALED(wstatus); // valeur < 0 pour détecter les SIG et exit nous retourne bien 255 en faisant echo $?
         }
     } else {
         // Fork failed
