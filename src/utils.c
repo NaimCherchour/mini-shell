@@ -114,7 +114,7 @@ int browse_directory(const char *directory, int hidden, int recursive, int exten
 
 
         // type check
-        if ((!type && S_ISREG(file_stat.st_mode) )|| 
+        if ((!type )|| 
         (type && TYPE == 'f' && S_ISREG(file_stat.st_mode)) || 
         (type && TYPE == 'd' && S_ISDIR(file_stat.st_mode)) ||
         (type && TYPE == 'l' && S_ISLNK(file_stat.st_mode)) || 
@@ -127,7 +127,8 @@ int browse_directory(const char *directory, int hidden, int recursive, int exten
         if (recursive && S_ISDIR(file_stat.st_mode)) {
             // Skip "." and ".." directories
             if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-                return_val = MAX(return_val, browse_directory(full_path, hidden, recursive, extension, EXT, type, TYPE, var, command, optindex, return_val));
+                result = browse_directory(full_path, hidden, recursive, extension, EXT, type, TYPE, var, command, optindex, return_val);
+                return_val = MAX(return_val, result);
             }
         }
     }

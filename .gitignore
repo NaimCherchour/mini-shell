@@ -1,8 +1,8 @@
 obj
-src/fsh
-*.o
 fsh
 bin
-.sy5-2024-2025-projet-fsh-autotests.nosync
+tests
+log
+test.sh
 .*
-!.git
+
