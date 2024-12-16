@@ -110,14 +110,15 @@ void free_commands(char*** commands) {
 }
 
 
-
-
-// executes one simple command
-int execute_command(char** command) {
-
-    //Ignorer SIGINT (Ctrl+C) et SIGTERM
+// Gérer les signaux
+void ignore_signals() {
     signal(SIGINT, SIG_IGN); // Ignorer Ctrl+C
     signal(SIGTERM, SIG_IGN); // Ignorer SIGTERM
+}
+
+// Exécuter une commande interne 
+int execute_internal_command(char** command) {
+    int res = -1 ; // la valeur à retourner ; -1 pour les commandes externes
 
     // Commandes Internes
     if (strcmp(command[0],"cd") == 0) return cd(command);
@@ -127,32 +128,29 @@ int execute_command(char** command) {
     if (strcmp(command[0], "for") == 0) return for_loop(command);
     if (strcmp(command[0], "if") == 0) return if_else(command);
 
-    
+    return res;
+}
 
+// Exécuter une commande externe
+int execute_external_command(char** command) {
     pid_t pid = fork();
-    if (pid == 0) {
-        // Child process
-
-        // On rétablit les signaux à leurs comportements par défaut donc si un signal ( ex SIGINT) est reçu le processus sera tué
+    if (pid == 0) { // Enfant
+        // Réinitialiser les signaux
         signal(SIGINT, SIG_DFL);
-        signal(SIGTERM, SIG_DFL); 
+        signal(SIGTERM, SIG_DFL);
 
-        // Check if the command is a built-in
+        // Créer le chemin d'accès à la commande
         char* bin_path = "bin/";
-        // Allocate memory for the command path string
         char* command_path = malloc(strlen(bin_path) + strlen(command[0]) + 1);
         if (command_path == NULL) {
             perror("malloc");
             exit(EXIT_FAILURE);
         }
-        // Copy the bin path and the command name to the command path string
         strcpy(command_path, bin_path);
         strcat(command_path, command[0]);
 
-
-        // Check if the command is a built-in
+        // Vérifier si la commande est exécutable
         if (access(command_path, X_OK) == 0) {
-            // Execute built-in command
             if (execv(command_path, command) == -1) {
                 perror("execv");
                 exit(EXIT_FAILURE);
@@ -160,29 +158,39 @@ int execute_command(char** command) {
         }
         free(command_path);
 
-        // Execute external command
+        // Exécuter la commande externe
         execvp(command[0], command);
-
-        // If execvp fails then there is no such command
         perror(command[0]);
         exit(EXIT_FAILURE);
-    } else if (pid > 0) {
+    } else if (pid > 0) { // Parent
         int wstatus;
-        waitpid(pid, &wstatus, 0);  // Attendre la fin du processus enfant
+        waitpid(pid, &wstatus, 0); // Attendre le processus enfant
+
         if (WIFEXITED(wstatus)) {
-            // Si le processus enfant s'est terminé normalement
-            return WEXITSTATUS(wstatus); // Valeur de retour du programme exécuté
+            return WEXITSTATUS(wstatus);
         } else if (WIFSIGNALED(wstatus)) {
-            // Si le processus enfant a été tué par un signal
-            return -WIFSIGNALED(wstatus); // valeur < 0 pour détecter les SIG et exit nous retourne bien 255 en faisant echo $?
+            return -WIFSIGNALED(wstatus);
         }
     } else {
-        // Fork failed
         perror("fork");
         return EXIT_FAILURE;
     }
-
     return EXIT_SUCCESS;
+}
+
+// executes one simple command
+int execute_command(char** command) {
+
+    // On Ignore les signaux : SIGINT (Ctrl+C) et SIGTERM
+    ignore_signals();
+
+    // On Exécute la commande interne ou externe
+    int res = execute_internal_command(command);
+    if (res != -1) {
+        return res;
+    }
+    res = execute_external_command(command);;
+    return res;
 }
 
 // executes the commands one by one
