@@ -21,5 +21,14 @@ typedef struct {
     char * file;            // Nom du fichier associé
 } Redirection;
 
+/*
+ * Détecte les redirections dans une commande donnée.
+ * 
+ * @param command    :   tableau de chaînes représentant les arguments de la commande
+ * @param redirections : tableau où seront stockées les redirections détectées
+ * @param max_redirections : taille maximale du tableau `redirections`.
+ * @return               Nombre de redirections détectées, ou -1 en cas d'erreur
+ */
+int detect_redirections(char** command, Redirection* redirections, int max_redirections);
 
 #endif
