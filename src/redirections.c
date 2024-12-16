@@ -165,7 +165,3 @@ bool apply_redirection(Redirection redir) {
     close(fd);
     return true;
 }
-
-
-
-

@@ -13,6 +13,7 @@
 #include "../headers/prompt.h" // pour utiliser la variable last_status ie valeur de retour 
 #include "../headers/internals.h" // pour les commandes internes
 #include "../headers/utils.h" // pour for_loop 
+#include "../headers/redirections.h" // pour les redirections
 
 #define MAX_COMMANDS 5
 #define MAX_ARGS 10
@@ -110,24 +111,60 @@ void free_commands(char*** commands) {
 }
 
 
+//Des méthodes pour factoriser le code 
+
 // Gérer les signaux
 void ignore_signals() {
     signal(SIGINT, SIG_IGN); // Ignorer Ctrl+C
     signal(SIGTERM, SIG_IGN); // Ignorer SIGTERM
 }
 
+// Sauvegarder les descripteurs d'origine
+int save_file_descriptors(int* saved_fds) {
+    return save_fds(saved_fds);
+}
+
+// Appliquer les redirections
+int apply_redirections(Redirection* redirections, int redir_count) {
+    for (int i = 0; i < redir_count; i++) {
+        if (!apply_redirection(redirections[i])) {
+            free(redirections[i].file);
+            return 0;
+        }
+        free(redirections[i].file);
+    }
+    return 1;
+}
+
+// Restaurer les descripteurs de fichiers
+void restore_file_descriptors(int* saved_fds) {
+    restore_fds(saved_fds);
+}
+
 // Exécuter une commande interne 
-int execute_internal_command(char** command) {
-    int res = -1 ; // la valeur à retourner ; -1 pour les commandes externes
+int execute_internal_command(char** command, int redir_count, int* saved_fds) {
+    int res ; // la valeur à retourner 
 
     // Commandes Internes
-    if (strcmp(command[0],"cd") == 0) return cd(command);
-    if (strcmp(command[0],"ftype") == 0) return ftype(command);
-    if (strcmp(command[0], "pwd") == 0) return pwd(command);
-    if (strcmp(command[0], "exit") == 0) return exit_shell(command);
-    if (strcmp(command[0], "for") == 0) return for_loop(command);
-    if (strcmp(command[0], "if") == 0) return if_else(command);
+    if (strcmp(command[0], "cd") == 0) {
+        res = cd(command);
+    } else if (strcmp(command[0], "ftype") == 0) {
+        res = ftype(command);
+    } else if (strcmp(command[0], "pwd") == 0) {
+        res = pwd(command);
+    } else if (strcmp(command[0], "exit") == 0) {
+        res = exit_shell(command);
+    } else if (strcmp(command[0], "for") == 0) {
+        res =  for_loop(command);
+    } else if (strcmp(command[0], "if") == 0) {
+        res =  if_else(command);
+    } else {
+        return -1; // Commande non interne
+    }
 
+    if (redir_count > 0) {
+        restore_file_descriptors(saved_fds); // on remets les descripteurs à leur état initial
+    }
     return res;
 }
 
@@ -184,12 +221,37 @@ int execute_command(char** command) {
     // On Ignore les signaux : SIGINT (Ctrl+C) et SIGTERM
     ignore_signals();
 
+    // On Initialise un tableau de redirections
+    //TODO : ne pas restreindre le nombre de redirections
+    Redirection redirections[5];
+    int redir_count = detect_redirections(command, redirections, 5);
+
+    // On sauvegarde les descripteurs d'origine
+    int saved_fds[3];
+    if (redir_count > 0 && save_file_descriptors(saved_fds) != 0) {
+        fprintf(stderr, "Erreur lors de la sauvegarde des descripteurs\n");
+        return EXIT_FAILURE;
+    }
+
+    // On Applique les redirections
+    if (redir_count > 0 && !apply_redirections(redirections, redir_count)) {
+        restore_file_descriptors(saved_fds);
+        return EXIT_FAILURE;
+    }
+
     // On Exécute la commande interne ou externe
-    int res = execute_internal_command(command);
+    int res = execute_internal_command(command,redir_count, saved_fds);
     if (res != -1) {
         return res;
     }
-    res = execute_external_command(command);;
+    res = execute_external_command(command);
+
+
+    // On restaure les descripteurs de fichiers après l'exécution
+    if (redir_count > 0) {
+        restore_file_descriptors(saved_fds);
+    }
+
     return res;
 }
 
