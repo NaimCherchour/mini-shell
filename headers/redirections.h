@@ -31,4 +31,28 @@ typedef struct {
  */
 int detect_redirections(char** command, Redirection* redirections, int max_redirections);
 
+/*
+ * duplique les descripteurs de fichiers pour sauvegarder leur état initial afin de les restorer
+ * 
+ * @param fds Tableau de trois descripteurs (stdin, stdout, stderr).
+ * @return    0 en cas de succès, -1 en cas d'échec.
+ */
+int save_fds(int fds[3]) ;
+
+/*
+ * Restaure les descripteurs de fichiers à leur état initial.
+ * 
+ * @param fds Tableau des trois descripteurs sauvegardés
+ * @return    0 en cas de succès, -1 en cas d'échec
+ */
+int restore_fds(int fds[3]);
+
+/*
+ * Applique une redirection spécifique.
+ * 
+ * @param redir une structure représentant la redirection à appliquer
+ * @return      true si la redirection est appliquée, false sinon
+ */
+bool apply_redirection(Redirection redir);
+
 #endif

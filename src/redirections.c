@@ -78,6 +78,94 @@ int detect_redirections(char** command, Redirection* redirections, int max_redir
     return redir_count;
 }
 
+// Sauvegarde les descripteurs de fichiers pour garder leur états initiaux
+int save_fds(int fds[3]) {
+    for (int i = 0; i < 3; i++) {
+        // stdin(0), stdout(1) et stderr(2)
+        fds[i] = dup(i);  // Dupliquer le descripteur courant
+        if (fds[i] < 0) {
+            perror("Erreur de duplication des descripteurs");
+            // Si une erreur survient, On annule les duplications précédentes
+            for (int j = 0; j < i; j++) close(fds[j]);
+            return -1;
+        }
+    }
+    return 0;  // Succès
+}
+
+// On remet les descripteurs à leur états initiale pour continuer l'exécution après avoir appliquer la redirection
+int restore_fds(int fds[3]) {
+    for (int i = 0; i < 3; i++) {
+        if (fds[i] != -1) {
+            if (dup2(fds[i], i) == -1) {  // On restaure le descripteur original
+                perror("Erreur de  restauration des descripteurs");
+                return -1;
+            }
+            close(fds[i]);  // On ferme le descripteur sauvegardé
+        }
+    }
+    return 0;  // Succès
+}
+
+
+// Applique une redirection spécifique en ouvrant le fichier et en redirigeant le descripteur standard
+bool apply_redirection(Redirection redir) {
+    int fd; // Descripteur de fichier
+    int target_fd; // Descripteur cible pour la redirection
+
+    // Définir les flags pour ouvrir le fichier selon le type de redirection
+    switch (redir.type) {
+        case STDIN:
+            fd = open(redir.file, O_RDONLY);  // Fichier en lecture
+            target_fd = STDIN_FILENO;
+            break;
+        case STDOUT:
+            fd = open(redir.file, O_WRONLY | O_CREAT | O_EXCL, 0664);  // Écriture sans écraser
+            target_fd = STDOUT_FILENO;
+            break;
+        case STDOUT_APPEND:
+            fd = open(redir.file, O_WRONLY | O_CREAT | O_APPEND, 0664);  //Écriture en ajout
+            target_fd = STDOUT_FILENO;
+            break;
+        case STDOUT_TRUNC:
+            fd = open(redir.file, O_WRONLY | O_CREAT | O_TRUNC, 0664);  //Écriture avec troncature
+            target_fd = STDOUT_FILENO;
+            break;
+        case STDERR:
+            fd = open(redir.file, O_WRONLY | O_CREAT | O_EXCL, 0664);  //Écriture sans écraser
+            target_fd = STDERR_FILENO;
+            break;
+        case STDERR_APPEND:
+            fd = open(redir.file, O_WRONLY | O_CREAT | O_APPEND, 0664);  //Écriture en ajout
+            target_fd = STDERR_FILENO;
+            break;
+        case STDERR_TRUNC:
+            fd = open(redir.file, O_WRONLY | O_CREAT | O_TRUNC, 0664);  //Écriture avec troncature
+            target_fd = STDERR_FILENO;
+            break;
+        default:
+            write(STDERR_FILENO, "Type de redirection inconnu\n",29);
+            return false;
+    }
+
+    if (fd == -1) {
+        perror("Erreur d'ouverture du fichier pour la redirection");
+        return false;
+    }
+
+    // On redirige le descripteur standard
+    // target_fd -> fd
+    if (dup2(fd, target_fd) == -1) {
+        perror("Erreur lors de dup2 pour redirection");
+        close(fd);
+        return false;
+    }
+
+    // On ferme le descripteur ouvert car il est maintenant redirigé
+    close(fd);
+    return true;
+}
+
 
 
 
