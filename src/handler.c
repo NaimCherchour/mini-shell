@@ -8,6 +8,7 @@
 #include <dirent.h>
 #include <linux/limits.h> // Pour #define PATH_MAX 4096
 #include <signal.h>
+#include <ctype.h> // Pour la fonction isspace
 
 #include "../headers/handler.h"
 #include "../headers/prompt.h" // pour utiliser la variable last_status ie valeur de retour 
@@ -19,7 +20,9 @@
 #define MAX_ARGS 10
 #define INITIAL_SIZE 15
 
-char** parse_input(char* prompt) {
+
+// Parse l'entrée de l'utilisateur ie: découpe la ligne en arguments
+char** parse_input(char* line) {
     int size = INITIAL_SIZE;
     char** args = malloc(size * sizeof(char*));
     if (args == NULL) {
@@ -28,40 +31,44 @@ char** parse_input(char* prompt) {
     }
 
     int arg_count = 0;
-    char* token = strtok(prompt, " ");
+    char* ptr = line ; 
 
-    while (token != NULL) {
-        if (arg_count >= size - 1) {
-            size *= 2;
-            char** temp = realloc(args, size * sizeof(char*));
-            if (temp == NULL) {
+    while (*ptr != '\0') {
+        // Ignorer les espaces
+        while (isspace(*ptr)) ptr++;
+
+        // Vérifier si on a atteint la fin de la ligne
+        if (*ptr == '\0') break;
+        
+        char* arg_start = ptr; // pointeur sur le début de l'argument
+        int arg_len = 0; // longueur de l'argument
+
+        if (*ptr == '{' || *ptr == '}' || *ptr == ';') {
+            // Accolades et point-virgule sont des tokens uniques
+            arg_len = 1;
+            ptr++;
+        } else {
+            while (*ptr != '\0' && !isspace(*ptr) && *ptr != '{' && *ptr != '}' && *ptr != ';') {
+                ptr++;
+                arg_len++;
+            }
+        }
+
+        char* token = strndup(arg_start, arg_len); // copie de l'argument
+        args[arg_count] = token; // on ajoute l'argument au tableau
+ 
+        if (arg_count >= size ) { // on vérifie si on a atteint la taille maximale
+            size *= 2; 
+            args = realloc(args, size * sizeof(char*)); 
+            if (args == NULL) {
                 perror("realloc");
-                free(args);
                 exit(EXIT_FAILURE);
             }
-            args = temp;
         }
-
-        args[arg_count] = strdup(token);
-        if (args[arg_count] == NULL) {
-            perror("strdup");
-            for (int i = 0; i < arg_count; i++) {
-                free(args[i]);
-            }
-            free(args);
-            exit(EXIT_FAILURE);
-        }
-
-        arg_count++;
-        token = strtok(NULL, " ");
     }
-
-    args[arg_count] = NULL;
+    args[arg_count] = NULL; // on termine le tableau avec NULL
     return args;
 }
-
-
-
 
 // cuts-out commands from the parsed prompt
 char*** cutout_commands(char** parsed_prompt) {
