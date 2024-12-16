@@ -54,8 +54,8 @@ char** parse_input(char* line) {
             }
         }
 
-        char* token = strndup(arg_start, arg_len); // copie de l'argument
-        args[arg_count] = token; // on ajoute l'argument au tableau
+        char* arg = strndup(arg_start, arg_len); // copie de l'argument
+        args[arg_count++] = arg; // on ajoute l'argument au tableau
  
         if (arg_count >= size ) { // on vérifie si on a atteint la taille maximale
             size *= 2; 
@@ -70,49 +70,76 @@ char** parse_input(char* line) {
     return args;
 }
 
-// cuts-out commands from the parsed prompt
-char*** cutout_commands(char** parsed_prompt) {
+// cutout_commands découpe les commandes séparées par des ;
+char*** cutout_commands(char** args) {
+    int size = INITIAL_SIZE;
     // Allocate memory for the commands 2D array
-    char*** commands = (char***)malloc(MAX_COMMANDS * sizeof(char**));
-    if (commands == NULL) {
-        perror("Failed to allocate memory for commands");
+    char*** commands = malloc(size * sizeof(char**));
+    if (!commands) {
+        perror("malloc");
         exit(EXIT_FAILURE);
     }
+    int cmd_count = 0;
+    int arg_index = 0;
 
-    for (int i = 0; i < MAX_COMMANDS; i++) {
-        commands[i] = (char**)malloc(MAX_ARGS * sizeof(char*));
-        if (commands[i] == NULL) {
-            perror("Failed to allocate memory for commands[i]");
+    while (args[arg_index] != NULL ){
+        int cmd_size = INITIAL_SIZE;
+        char** cmd_args = malloc(cmd_size * sizeof(char*));
+        if (!cmd_args) {
+            perror("malloc");
             exit(EXIT_FAILURE);
         }
-    }
+        int cmd_arg_count = 0;
+        int in_brackets = 0; // Pour gérer les accolades
+        
+        while(args[arg_index] != NULL ) {
+            if (strcmp(args[arg_index],"{") == 0 ) {
+                in_brackets++;
+            } else if (strcmp(args[arg_index],"}") == 0 ) {
+                in_brackets--; 
+            }
 
-    // Loop through the parsed prompt
-    int i = 0;
-    int j = 0;
-    int k = 0;
-    while (parsed_prompt[i] != NULL) {
-        // Check for the ; separator
-        if (strcmp(parsed_prompt[i], ";") == 0) {
-            commands[j][k] = NULL;
-            j++;
-            k = 0;
-        } else {
-            commands[j][k] = parsed_prompt[i];
-            k++;
+            if (strcmp(args[arg_index],";") == 0 && in_brackets <= 0 ) {
+                arg_index++; //On saute le ppoint-virgule
+                break ; 
+            }
+            cmd_args[cmd_arg_count++] = strdup(args[arg_index++]);
+
+            if (cmd_arg_count >= cmd_size) {
+                cmd_size *= 2;
+                cmd_args = realloc(cmd_args, cmd_size * sizeof(char*));
+                if (!cmd_args) {
+                    perror("realloc");
+                    exit(EXIT_FAILURE);
+                }
+            }
+        } 
+
+        cmd_args[cmd_arg_count] = NULL; //Null-terminate la commande
+        commands[cmd_count++] = cmd_args;
+
+        if (cmd_count >= size) {
+            size *= 2;
+            commands = realloc(commands, size * sizeof(char**));
+            if (!commands) {
+                perror("realloc");
+                exit(EXIT_FAILURE);
+            }
         }
-        i++;
     }
-    commands[j][k] = NULL; // Ensure the last command is null-terminated
-    commands[j+1][0] = NULL; // Null-terminate the commands array
-
-
+    
+    commands[cmd_count] = NULL; // Null-terminate the commands array
     return commands;
 }
 
 void free_commands(char*** commands) {
+    if (commands == NULL) {
+        return; // Nothing to free
+    }
     for (int i = 0; i < MAX_COMMANDS; i++) {
-        free(commands[i]);
+        if ( commands[i] != NULL ){
+                free(commands[i]);
+        }
     }
     free(commands);
 }
@@ -266,7 +293,7 @@ int execute_command(char** command) {
 int handle_commands(char*** commands) {
     int status = 0;
     int i = 0;
-    while (commands[i]!= NULL) {
+    while (commands[i] != NULL) {
         status = execute_command(commands[i]);
         i++;
     }
