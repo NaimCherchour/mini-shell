@@ -67,11 +67,24 @@ int main() {
         if (strlen(line) > 0) {
             add_history(line); // On ajoute la commande à l'historique
             char** command = parse_input(line); // parser la commande
-            last_status = execute_command(command); // exécuter les commandes
+            char*** commands = cutout_commands(command); // découper les commandes
+
+            last_status = handle_commands(commands); // exécuter les commandes une par une
+            
+            //libérer la mémoire allouée pour les commandes
             for (int i = 0; command[i] != NULL; i++) {
                 free(command[i]);
             }
             free(command);
+
+        
+            for (int i = 0; commands[i] != NULL; i++) {
+                for (int j = 0; commands[i][j] != NULL; j++) { 
+                    free(commands[i][j]);//On libère  la mémoire allouée pour chaque argument
+                }
+                free(commands[i]);// On libère la mémoire allouée  pour chaque commande
+            }
+            free(commands); //On libère  la mémoire allouée pour le tableau de commandes
         }
 
         free(line); // On libère la mémoire allouée par readline

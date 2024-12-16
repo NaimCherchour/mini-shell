@@ -255,16 +255,13 @@ int execute_command(char** command) {
     return res;
 }
 
-// executes the commands one by one
-// TODO: detect piping and redirections
+// Exécute les commandes une par une ( pour les séquences de commandes , séparées par des ;)
 int handle_commands(char*** commands) {
+    int status = 0;
     int i = 0;
-    while (commands[i][0] != NULL) {
-        //debug
-        // printf("command: %s\n", commands[i][0]);
-        int status = execute_command(commands[i]);
-        if (status != 0) return status;
+    while (commands[i]!= NULL) {
+        status = execute_command(commands[i]);
         i++;
     }
-    return EXIT_SUCCESS;
+    return status; // On ret la valeur de retour de la dernière commande exécutée
 }
