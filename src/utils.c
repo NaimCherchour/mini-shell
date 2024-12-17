@@ -242,6 +242,36 @@ int execute_block(char* block_command) {
     return return_val;
 }
 
+/**
+ * Cette méthode auxiliaire convertit un tableau de tokens en une chaîne de caractères
+ * Chaque token est séparé par un espace dans la chaîne finale
+ *
+ * @param tokens Le tab de tokens
+ * @param count  Le nombre de tokens dans le tab
+ * @return       Une chaîne de caractères contenant tous les tokens séparés par des espaces
+ */
+char* tokens_to_string(char** tokens, int count) {
+    size_t total_length = 0;
+    // Calcul de la longueur
+    for (int i = 0; i < count; i++) {
+        total_length += strlen(tokens[i]) + 1; // +1 pour l'espace ou le caractère de fin
+    }
+
+    char* result = malloc(total_length + 1); // +1 pour le caractère nul '\0'
+    if (!result) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+    result[0] = '\0'; // Init
+    // On concat chaque token suivi d'un espace à la chaîne résultante
+    for (int i = 0; i < count; i++) {
+        strcat(result, tokens[i]);
+        strcat(result, " ");
+    }
+    return result;
+}
+
+
 int for_loop(char** command){
     int argc = 0;
     int opt = 0;
@@ -301,35 +331,6 @@ int for_loop(char** command){
     return browse_directory(directory, hidden, recursive, extension, EXT, type, TYPE, var, command, optind, 0);
 
     
-}
-
-/**
- * Cette méthode auxiliaire convertit un tableau de tokens en une chaîne de caractères
- * Chaque token est séparé par un espace dans la chaîne finale
- *
- * @param tokens Le tab de tokens
- * @param count  Le nombre de tokens dans le tab
- * @return       Une chaîne de caractères contenant tous les tokens séparés par des espaces
- */
-char* tokens_to_string(char** tokens, int count) {
-    size_t total_length = 0;
-    // Calcul de la longueur
-    for (int i = 0; i < count; i++) {
-        total_length += strlen(tokens[i]) + 1; // +1 pour l'espace ou le caractère de fin
-    }
-
-    char* result = malloc(total_length + 1); // +1 pour le caractère nul '\0'
-    if (!result) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-    result[0] = '\0'; // Init
-    // On concat chaque token suivi d'un espace à la chaîne résultante
-    for (int i = 0; i < count; i++) {
-        strcat(result, tokens[i]);
-        strcat(result, " ");
-    }
-    return result;
 }
 
 
