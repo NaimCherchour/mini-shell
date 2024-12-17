@@ -216,10 +216,11 @@ int handle_pipes(char *line) {
         while (*token == ' ') token++;
         char *end = token + strlen(token) - 1;
         while (end > token && *end == ' ') *end-- = '\0';
-        commands[num_commands++] = strdup(token);
+        commands[num_commands++] = strdup(trim_spaces(token));
         token = strtok(NULL, "|");
     }
     commands[num_commands] = NULL;
+
 
     int pipefds[2 * (num_commands - 1)];
     pid_t pids[num_commands];
