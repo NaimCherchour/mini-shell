@@ -198,3 +198,45 @@ int handle_commands(char*** commands) {
     }
     return EXIT_SUCCESS;
 }
+
+int handle_pipes(char *line) {
+    char *commands[MAX_COMMANDS];
+    int num_commands = 0;
+
+    char *token = strtok(line, "|");
+    while (token != NULL) {
+        while (*token == ' ') token++;
+        char *end = token + strlen(token) - 1;
+        while (end > token && *end == ' ') *end-- = '\0';
+        commands[num_commands++] = strdup(token);
+        token = strtok(NULL, "|");
+    }
+    commands[num_commands] = NULL;
+
+    int pipefds[2 * (num_commands - 1)];
+    pid_t pids[num_commands];
+
+    for (int i = 0; i < num_commands - 1; i++) {
+        if (pipe(pipefds + 2 * i) == -1) exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < num_commands; i++) {
+        pids[i] = fork();
+        if (pids[i] == 0) {
+            if (i > 0) dup2(pipefds[2 * (i - 1)], STDIN_FILENO);
+            if (i < num_commands - 1) dup2(pipefds[2 * i + 1], STDOUT_FILENO);
+
+            for (int j = 0; j < 2 * (num_commands - 1); j++) close(pipefds[j]);
+
+            char **args = parse_input(commands[i]);
+            execvp(args[0], args);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    for (int i = 0; i < 2 * (num_commands - 1); i++) close(pipefds[i]);
+    for (int i = 0; i < num_commands; i++) waitpid(pids[i], NULL, 0);
+    for (int i = 0; i < num_commands; i++) free(commands[i]);
+
+    return 0;
+}
