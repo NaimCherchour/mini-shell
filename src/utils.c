@@ -218,6 +218,31 @@ char** constructor(char** command, int optindex, char* full_path, char var, int 
     return new_command;
 }
 
+
+// Méthode interne 
+int execute_block(char* block_command) {
+    // On analyse la chaîne avec parse_input
+    char **tokens = parse_input(block_command);
+    // On divise les tokens en commandes avec split_commands
+    char ***commands = cutout_commands(tokens);
+    // On exécute les commandes
+    int return_val = handle_commands(commands);
+    //On Libère la mémoire
+    for (int i = 0; tokens[i] != NULL; i++) {
+        free(tokens[i]);
+    }
+    free(tokens);
+    for (int i = 0; commands[i] != NULL; i++) {
+        for (int j = 0; commands[i][j] != NULL; j++) {
+            free(commands[i][j]);
+        }
+        free(commands[i]);
+    }
+    free(commands);
+    return return_val;
+}
+
+
 int for_loop(char** command){
     int argc = 0;
     int opt = 0;
