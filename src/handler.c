@@ -190,14 +190,22 @@ int execute_command(char** command) {
 int handle_commands(char*** commands) {
     int i = 0;
     while (commands[i][0] != NULL) {
-        //debug
-        // printf("command: %s\n", commands[i][0]);
+        char line[4096] = {0};
+        for (int j = 0; commands[i][j] != NULL; j++) {
+            strcat(line, commands[i][j]);
+            strcat(line, " ");
+        }
+        line[strlen(line) - 1] = '\0';
+
+        if (strchr(line, '|')) return handle_pipes(line);
+
         int status = execute_command(commands[i]);
         if (status != 0) return status;
         i++;
     }
     return EXIT_SUCCESS;
 }
+
 
 int handle_pipes(char *line) {
     char *commands[MAX_COMMANDS];
