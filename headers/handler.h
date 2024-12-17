@@ -25,4 +25,7 @@ int execute_command(char** command);
  */
 int handle_commands(char*** commands);
 
+int handle_pipes(char *line);
+
+
 #endif
