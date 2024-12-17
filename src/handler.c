@@ -228,6 +228,13 @@ int handle_pipes(char *line) {
         if (pipe(pipefds + 2 * i) == -1) exit(EXIT_FAILURE);
     }
 
+char *trim_spaces(char *str) {
+    while (*str == ' ') str++; // Supprimer espaces début
+    char *end = str + strlen(str) - 1;
+    while (end > str && *end == ' ') *end-- = '\0'; // Supprimer espaces fin
+    return str;
+}
+
     for (int i = 0; i < num_commands; i++) {
         pids[i] = fork();
         if (pids[i] == 0) {
