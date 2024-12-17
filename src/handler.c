@@ -43,15 +43,9 @@ char** parse_input(char* line) {
         char* arg_start = ptr; // pointeur sur le début de l'argument
         int arg_len = 0; // longueur de l'argument
 
-        if (*ptr == '{' || *ptr == '}' || *ptr == ';') {
-            // Accolades et point-virgule sont des tokens uniques
-            arg_len = 1;
+        while (*ptr != '\0' && !isspace(*ptr)) {
             ptr++;
-        } else {
-            while (*ptr != '\0' && !isspace(*ptr) && *ptr != '{' && *ptr != '}' && *ptr != ';') {
-                ptr++;
-                arg_len++;
-            }
+            arg_len++;
         }
 
         char* arg = strndup(arg_start, arg_len); // copie de l'argument
