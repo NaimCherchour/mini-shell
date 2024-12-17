@@ -220,11 +220,7 @@ int handle_pipes(char *line) {
         token = strtok(NULL, "|");
     }
 
-    printf("Sous-commandes détectées :\n");
-for (int i = 0; i < num_commands; i++) {
-    printf("Commande %d : %s\n", i, commands[i]);
-}
-
+    
     commands[num_commands] = NULL;
 
 
