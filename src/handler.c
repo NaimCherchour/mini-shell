@@ -254,6 +254,10 @@ char *trim_spaces(char *str) {
 
     for (int i = 0; i < 2 * (num_commands - 1); i++) close(pipefds[i]);
     for (int i = 0; i < num_commands; i++) waitpid(pids[i], NULL, 0);
+    for (int i = 0; i < num_commands; i++) {
+    free(commands[i]);
+}
+
     for (int i = 0; i < num_commands; i++) free(commands[i]);
 
     return 0;
