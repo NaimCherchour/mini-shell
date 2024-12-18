@@ -221,34 +221,93 @@ char* replace_var_with_path(const char* str, const char* var, const char* replac
     return result;
 }
 
-char** constructor(char** command, int optindex, char* full_path, char var, int extension) {
-    // Allocate memory for the new command array
-    char** new_command = malloc(10 * sizeof(char*));
-    if (new_command == NULL) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
+int constructor(char **command, char *var, char **directory, int *hidden, int *recursive, int *extension, char **EXT, int *type, char *TYPE, char **cmd_str) {
+    // Extraction de la variable et du répertoire
+    *var = command[1][0];
+    *directory = command[3];
 
-    new_command[0] = command[optindex + 1];
-
-    size_t i = 1;
-    char var_str[3] = {'$', var, '\0'}; 
-
-    if (extension) {
-    char* dot = strrchr(full_path, '.');
-    if (dot) {
-        *dot = '\0';  // Truncate the string at the dot
-    }
-}
-
-    while (command[i + optindex + 1] != NULL && i < 10 && strcmp(command[i + optindex + 1], "}") != 0) {  
-        new_command[i] = replace_var_with_path(command[i + optindex + 1], var_str, full_path);
+    // Analyse des options
+    int i = 4; // Position après 'in' et le répertoire
+    while (command[i] != NULL && command[i][0] == '-') {
+        if (strcmp(command[i], "-A") == 0) {
+            *hidden = 1;
+        } else if (strcmp(command[i], "-r") == 0) {
+            *recursive = 1;
+        } else if (strcmp(command[i], "-e") == 0) {
+            if (command[i+1] != NULL) {
+                *extension = 1;
+                *EXT = command[i+1];
+                i++;
+            } else {
+                write(STDERR_FILENO, "Erreur : option '-e' nécessite un argument.\n", 42);
+                return 1;
+            }
+        } else if (strcmp(command[i], "-t") == 0) {
+            if (command[i+1] != NULL && strlen(command[i+1]) == 1) {
+                *type = 1;
+                *TYPE = command[i+1][0];
+                i++;
+            } else {
+                write(STDERR_FILENO, "Erreur : option '-t' nécessite un argument d'un caractère.\n", 62);
+                return 1;
+            }
+        } else {
+            char buffer[256];
+            int len = snprintf(buffer, sizeof(buffer), "Erreur : option inconnue '%s'\n", command[i]);
+            write(STDERR_FILENO, buffer, len);
+            return 1;
+        }
         i++;
     }
 
-    new_command[i] = NULL; // Null-terminate the array
-    return new_command;
+    // Extraction du bloc de commandes entre '{' et '}'
+    if (command[i] == NULL || strcmp(command[i], "{") != 0) {
+        write(STDERR_FILENO, "Erreur : '{' manquante ou mal positionnée pour ouvrir la commande structurée.\n", 81);
+        return 1;
+    }
+
+    // On cherche la fin du bloc '{...}
+    int bracket_count = 1;
+    int cmd_start = i + 1;
+    int cmd_end = -1;
+    for (int j = i + 1; command[j] != NULL; j++) {
+        if (strcmp(command[j], "{") == 0) {
+            bracket_count++;
+        } else if (strcmp(command[j], "}") == 0) {
+            bracket_count--;
+            if (bracket_count == 0) {
+                cmd_end = j;
+                break;
+            }
+        }
+    }
+
+    if (bracket_count != 0) {
+        write(STDERR_FILENO, "Erreur de syntaxe : accolades manquantes ou mal placées.\n", 58);
+        return 1;
+    }
+
+    // Construire la chaîne de commande
+    size_t total_length = 0;
+    for (int j = cmd_start; j < cmd_end; j++) {
+        total_length += strlen(command[j]) + 1; // +1 pour l'espace
+    }
+
+    *cmd_str = malloc(total_length + 1); // +1 pour le '\0'
+    if (!*cmd_str) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+    (*cmd_str)[0] = '\0';
+
+    for (int j = cmd_start; j < cmd_end; j++) {
+        strcat(*cmd_str, command[j]);
+        strcat(*cmd_str, " ");
+    }
+
+    return 0;
 }
+
 
 
 // Méthode interne 
