@@ -190,17 +190,23 @@ int execute_command(char** command) {
 int handle_commands(char*** commands) {
     int i = 0;
     while (commands[i][0] != NULL) {
+        // Reconstruire la ligne complète pour vérifier les pipes
         char line[4096] = {0};
         for (int j = 0; commands[i][j] != NULL; j++) {
             strcat(line, commands[i][j]);
             strcat(line, " ");
         }
-        line[strlen(line) - 1] = '\0';
+        line[strlen(line) - 1] = '\0'; // Retirer l'espace final
 
-        if (strchr(line, '|')) return handle_pipes(line);
+        // Détection des pipes dans la ligne complète
+        if (strchr(line, '|')) {
+            return handle_pipes(line); // Appeler handle_pipes pour gérer les pipes
+        }
 
+        // Commandes simples
         int status = execute_command(commands[i]);
         if (status != 0) return status;
+
         i++;
     }
     return EXIT_SUCCESS;
@@ -208,64 +214,77 @@ int handle_commands(char*** commands) {
 
 
 int handle_pipes(char *line) {
-    char *commands[MAX_COMMANDS];
+    char *commands[MAX_COMMANDS]; // Tableau pour stocker les sous-commandes
     int num_commands = 0;
 
+    // Découper la ligne en sous-commandes autour de '|'
     char *token = strtok(line, "|");
     while (token != NULL) {
-        while (*token == ' ') token++;
+        while (*token == ' ') token++; // Supprimer les espaces au début
         char *end = token + strlen(token) - 1;
-        while (end > token && *end == ' ') *end-- = '\0';
-        commands[num_commands++] = strdup(trim_spaces(token));
+        while (end > token && *end == ' ') *end-- = '\0'; // Supprimer les espaces à la fin
+        commands[num_commands++] = strdup(token);
         token = strtok(NULL, "|");
     }
+    commands[num_commands] = NULL; // Terminaison
 
-    
-    commands[num_commands] = NULL;
+    int pipefds[2 * (num_commands - 1)]; // Tableau pour stocker les pipes
+    pid_t pids[num_commands];           // PIDs des processus enfants
 
-
-    int pipefds[2 * (num_commands - 1)];
-    pid_t pids[num_commands];
-
+    // Créer les pipes
     for (int i = 0; i < num_commands - 1; i++) {
-        if (pipe(pipefds + 2 * i) == -1) exit(EXIT_FAILURE);
-    }
-
-if (num_commands == 0) {
-    fprintf(stderr, "Erreur : commande pipe vide détectée.\n");
-    return EXIT_FAILURE;
-}
-
-char *trim_spaces(char *str) {
-    while (*str == ' ') str++; // Supprimer espaces début
-    char *end = str + strlen(str) - 1;
-    while (end > str && *end == ' ') *end-- = '\0'; // Supprimer espaces fin
-    return str;
-}
-
-    for (int i = 0; i < num_commands; i++) {
-        pids[i] = fork();
-        if (pids[i] == 0) {
-        if (i > 0)
-            dup2(pipefds[2 * (i - 1)], STDIN_FILENO);
-        if (i < num_commands - 1)
-            dup2(pipefds[2 * i + 1], STDOUT_FILENO);
-
-            for (int j = 0; j < 2 * (num_commands - 1); j++) close(pipefds[j]);
-
-            char **args = parse_input(commands[i]);
-            execvp(args[0], args);
+        if (pipe(pipefds + 2 * i) == -1) {
+            perror("pipe");
             exit(EXIT_FAILURE);
         }
     }
 
-    for (int i = 0; i < 2 * (num_commands - 1); i++) close(pipefds[i]);
-    for (int i = 0; i < num_commands; i++) waitpid(pids[i], NULL, 0);
+    // Exécuter chaque sous-commande
     for (int i = 0; i < num_commands; i++) {
-    free(commands[i]);
-}
+        pids[i] = fork();
+        if (pids[i] == -1) {
+            perror("fork");
+            exit(EXIT_FAILURE);
+        }
 
-    for (int i = 0; i < num_commands; i++) free(commands[i]);
+        if (pids[i] == 0) { // Processus enfant
+            // Redirection entrée
+            if (i > 0) {
+                dup2(pipefds[2 * (i - 1)], STDIN_FILENO);
+            }
+            // Redirection sortie
+            if (i < num_commands - 1) {
+                dup2(pipefds[2 * i + 1], STDOUT_FILENO);
+            }
 
-    return 0;
+            // Fermer tous les pipes inutiles
+            for (int j = 0; j < 2 * (num_commands - 1); j++) {
+                close(pipefds[j]);
+            }
+
+            // Exécuter la commande
+            char **args = parse_input(commands[i]);
+            execvp(args[0], args);
+            perror("execvp"); // Si execvp échoue
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    // Fermer tous les pipes dans le parent
+    for (int i = 0; i < 2 * (num_commands - 1); i++) {
+        close(pipefds[i]);
+    }
+
+    // Attendre tous les enfants
+    int status;
+    for (int i = 0; i < num_commands; i++) {
+        waitpid(pids[i], &status, 0);
+    }
+
+    // Libérer la mémoire
+    for (int i = 0; i < num_commands; i++) {
+        free(commands[i]);
+    }
+
+    return WEXITSTATUS(status);
 }
