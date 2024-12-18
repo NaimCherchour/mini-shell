@@ -8,6 +8,7 @@
 #include <dirent.h>
 #include <linux/limits.h> // Pour #define PATH_MAX 4096
 #include <signal.h>
+#include <ctype.h> // Pour la fonction isspace
 
 #include "../headers/handler.h"
 #include "../headers/prompt.h" // pour utiliser la variable last_status ie valeur de retour 
@@ -19,7 +20,9 @@
 #define MAX_ARGS 10
 #define INITIAL_SIZE 15
 
-char** parse_input(char* prompt) {
+
+// Parse l'entrée de l'utilisateur ie: découpe la ligne en arguments
+char** parse_input(char* line) {
     int size = INITIAL_SIZE;
     char** args = malloc(size * sizeof(char*));
     if (args == NULL) {
@@ -28,84 +31,109 @@ char** parse_input(char* prompt) {
     }
 
     int arg_count = 0;
-    char* token = strtok(prompt, " ");
+    char* ptr = line ; 
 
-    while (token != NULL) {
-        if (arg_count >= size - 1) {
-            size *= 2;
-            char** temp = realloc(args, size * sizeof(char*));
-            if (temp == NULL) {
+    while (*ptr != '\0') {
+        // Ignorer les espaces
+        while (isspace(*ptr)) ptr++;
+
+        // Vérifier si on a atteint la fin de la ligne
+        if (*ptr == '\0') break;
+        
+        char* arg_start = ptr; // pointeur sur le début de l'argument
+        int arg_len = 0; // longueur de l'argument
+
+        while (*ptr != '\0' && !isspace(*ptr)) {
+            ptr++;
+            arg_len++;
+        }
+
+        char* arg = strndup(arg_start, arg_len); // copie de l'argument
+        args[arg_count++] = arg; // on ajoute l'argument au tableau
+ 
+        if (arg_count >= size ) { // on vérifie si on a atteint la taille maximale
+            size *= 2; 
+            args = realloc(args, size * sizeof(char*)); 
+            if (args == NULL) {
                 perror("realloc");
-                free(args);
                 exit(EXIT_FAILURE);
             }
-            args = temp;
         }
-
-        args[arg_count] = strdup(token);
-        if (args[arg_count] == NULL) {
-            perror("strdup");
-            for (int i = 0; i < arg_count; i++) {
-                free(args[i]);
-            }
-            free(args);
-            exit(EXIT_FAILURE);
-        }
-
-        arg_count++;
-        token = strtok(NULL, " ");
     }
-
-    args[arg_count] = NULL;
+    args[arg_count] = NULL; // on termine le tableau avec NULL
     return args;
 }
 
-
-
-
-// cuts-out commands from the parsed prompt
-char*** cutout_commands(char** parsed_prompt) {
+// cutout_commands découpe les commandes séparées par des ;
+char*** cutout_commands(char** args) {
+    int size = INITIAL_SIZE;
     // Allocate memory for the commands 2D array
-    char*** commands = (char***)malloc(MAX_COMMANDS * sizeof(char**));
-    if (commands == NULL) {
-        perror("Failed to allocate memory for commands");
+    char*** commands = malloc(size * sizeof(char**));
+    if (!commands) {
+        perror("malloc");
         exit(EXIT_FAILURE);
     }
+    int cmd_count = 0;
+    int arg_index = 0;
 
-    for (int i = 0; i < MAX_COMMANDS; i++) {
-        commands[i] = (char**)malloc(MAX_ARGS * sizeof(char*));
-        if (commands[i] == NULL) {
-            perror("Failed to allocate memory for commands[i]");
+    while (args[arg_index] != NULL ){
+        int cmd_size = INITIAL_SIZE;
+        char** cmd_args = malloc(cmd_size * sizeof(char*));
+        if (!cmd_args) {
+            perror("malloc");
             exit(EXIT_FAILURE);
         }
-    }
+        int cmd_arg_count = 0;
+        int in_brackets = 0; // Pour gérer les accolades
+        
+        while(args[arg_index] != NULL ) {
+            if (strcmp(args[arg_index],"{") == 0 ) {
+                in_brackets++;
+            } else if (strcmp(args[arg_index],"}") == 0 ) {
+                in_brackets--; 
+            }
 
-    // Loop through the parsed prompt
-    int i = 0;
-    int j = 0;
-    int k = 0;
-    while (parsed_prompt[i] != NULL) {
-        // Check for the ; separator
-        if (strcmp(parsed_prompt[i], ";") == 0) {
-            commands[j][k] = NULL;
-            j++;
-            k = 0;
-        } else {
-            commands[j][k] = parsed_prompt[i];
-            k++;
+            if (strcmp(args[arg_index],";") == 0 && in_brackets <= 0 ) {
+                arg_index++; //On saute le ppoint-virgule
+                break ; 
+            }
+            cmd_args[cmd_arg_count++] = strdup(args[arg_index++]);
+
+            if (cmd_arg_count >= cmd_size) {
+                cmd_size *= 2;
+                cmd_args = realloc(cmd_args, cmd_size * sizeof(char*));
+                if (!cmd_args) {
+                    perror("realloc");
+                    exit(EXIT_FAILURE);
+                }
+            }
+        } 
+
+        cmd_args[cmd_arg_count] = NULL; //Null-terminate la commande
+        commands[cmd_count++] = cmd_args;
+
+        if (cmd_count >= size) {
+            size *= 2;
+            commands = realloc(commands, size * sizeof(char**));
+            if (!commands) {
+                perror("realloc");
+                exit(EXIT_FAILURE);
+            }
         }
-        i++;
     }
-    commands[j][k] = NULL; // Ensure the last command is null-terminated
-    commands[j+1][0] = NULL; // Null-terminate the commands array
-
-
+    
+    commands[cmd_count] = NULL; // Null-terminate the commands array
     return commands;
 }
 
 void free_commands(char*** commands) {
+    if (commands == NULL) {
+        return; // Nothing to free
+    }
     for (int i = 0; i < MAX_COMMANDS; i++) {
-        free(commands[i]);
+        if ( commands[i] != NULL ){
+                free(commands[i]);
+        }
     }
     free(commands);
 }
@@ -255,16 +283,13 @@ int execute_command(char** command) {
     return res;
 }
 
-// executes the commands one by one
-// TODO: detect piping and redirections
+// Exécute les commandes une par une ( pour les séquences de commandes , séparées par des ;)
 int handle_commands(char*** commands) {
+    int status = 0;
     int i = 0;
-    while (commands[i][0] != NULL) {
-        //debug
-        // printf("command: %s\n", commands[i][0]);
-        int status = execute_command(commands[i]);
-        if (status != 0) return status;
+    while (commands[i] != NULL) {
+        status = execute_command(commands[i]);
         i++;
     }
-    return EXIT_SUCCESS;
+    return status; // On ret la valeur de retour de la dernière commande exécutée
 }

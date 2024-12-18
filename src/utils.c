@@ -14,7 +14,7 @@
 
 
 #include "../headers/utils.h"
-#include "../headers/handler.h" // pour execute_command
+#include "../headers/handler.h" // pour handle_commands
 #include "../headers/prompt.h" // pour last_status
 
 // Macros
@@ -218,6 +218,60 @@ char** constructor(char** command, int optindex, char* full_path, char var, int 
     return new_command;
 }
 
+
+// Méthode interne 
+int execute_block(char* block_command) {
+    // On analyse la chaîne avec parse_input
+    char **tokens = parse_input(block_command);
+    // On divise les tokens en commandes avec split_commands
+    char ***commands = cutout_commands(tokens);
+    // On exécute les commandes
+    int return_val = handle_commands(commands);
+    //On Libère la mémoire
+    for (int i = 0; tokens[i] != NULL; i++) {
+        free(tokens[i]);
+    }
+    free(tokens);
+    for (int i = 0; commands[i] != NULL; i++) {
+        for (int j = 0; commands[i][j] != NULL; j++) {
+            free(commands[i][j]);
+        }
+        free(commands[i]);
+    }
+    free(commands);
+    return return_val;
+}
+
+/**
+ * Cette méthode auxiliaire convertit un tableau de tokens en une chaîne de caractères
+ * Chaque token est séparé par un espace dans la chaîne finale
+ *
+ * @param tokens Le tab de tokens
+ * @param count  Le nombre de tokens dans le tab
+ * @return       Une chaîne de caractères contenant tous les tokens séparés par des espaces
+ */
+char* tokens_to_string(char** tokens, int count) {
+    size_t total_length = 0;
+    // Calcul de la longueur
+    for (int i = 0; i < count; i++) {
+        total_length += strlen(tokens[i]) + 1; // +1 pour l'espace ou le caractère de fin
+    }
+
+    char* result = malloc(total_length + 1); // +1 pour le caractère nul '\0'
+    if (!result) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+    result[0] = '\0'; // Init
+    // On concat chaque token suivi d'un espace à la chaîne résultante
+    for (int i = 0; i < count; i++) {
+        strcat(result, tokens[i]);
+        strcat(result, " ");
+    }
+    return result;
+}
+
+
 int for_loop(char** command){
     int argc = 0;
     int opt = 0;
@@ -280,110 +334,100 @@ int for_loop(char** command){
 }
 
 
-
 // if TEST { CMD } else { CMD }
 // TEST is a pipeline of commands that return 0 or 1
 int if_else(char** command) {
     // find test delimited by if and {
-    char* test[10] = {0};
     int i = 1;
-    int j = 0;
+    int test_start = i; 
     while (command[i] != NULL && strcmp(command[i], "{") != 0) {
-        test[j] = command[i];
         i++;
-        j++;
     }
     // check for missing {
     if (command[i] == NULL) {
         write(STDERR_FILENO, "Syntax error : missing '{'.\n", 29);
-        return 1;
+        return 2; //TODO : à vérifier si c'est la bonne valeur de retour pour les erreurs de syntaxe ( serveur discord )
     }
-    test[j] = NULL; 
+    int test_end = i - 1; 
 
-    // debug print test
-    // printf("test\n");
-    // for (int k = 0; k < 10; k++) {
-    //     if (test[k] != NULL) {
-    //         printf("%s ", test[k]);
-    //     }
-    //     printf("\n");
-    // }
-
-    // find cmd1 delimited by { }
-    char* cmd1[10] = {0};
+    // find cmd delimited by { }
+    char** test_cmd = malloc((test_end - test_start + 2) * sizeof(char *));
+    for (int j = test_start, k = 0; j <= test_end; j++, k++) {
+        test_cmd[k] = strdup(command[j]); 
+    }
+    test_cmd[test_end - test_start + 1] = NULL;
+    
     i++; // Skip the '{'
-    j = 0;
-    while (command[i] != NULL && strcmp(command[i], "}") != 0) {
-        cmd1[j] = command[i];
+    int cmd_start = i;
+    int bracket_count = 1;
+    while (command[i] != NULL && bracket_count > 0) {
+         if (strcmp(command[i], "{") == 0) {
+            bracket_count++;
+        } else if (strcmp(command[i], "}") == 0) {
+            bracket_count--;
+        }
         i++;
-        j++;
     }
-    // check for missing }
-    if (command[i] == NULL) {
-        write(STDERR_FILENO, "Syntax error : missing '}.'\n", 29);
-        return 1;
+    if (bracket_count != 0) {
+        write(STDERR_FILENO, "Erreur syntaxique\n", 19); // }
+        return 2;
     }
-    cmd1[j] = NULL; 
+    int cmd_end = i - 2;
 
-    // debug 
-    // printf("cmd1\n");
-    // for (int k = 0; k < 10; k++) {
-    //     if (cmd1[k] != NULL) {
-    //         printf("%s ", cmd1[k]);
-    //     }
-    //     printf("\n");
-    // }
+    //On converti les tokens en chaîne 
+    char *cmd_if_str = tokens_to_string(&command[cmd_start], cmd_end - cmd_start + 1);
 
     // check for else
     bool has_else = false;
-    if (command[i+1] != NULL && strcmp(command[i+1], "else") == 0) {
+    char *cmd_else_str = NULL; 
+    if (command[i] != NULL && strcmp(command[i], "else") == 0) {
+        i++; // Passe le 'else'
+        if (command[i] == NULL || strcmp(command[i], "{") != 0) {
+            write(STDERR_FILENO, "Syntax error : missing '{' after else.\n", 39);
+            return 2;
+        }
+        i++; // Passer '{'
+        int cmd_else_start = i;
+        bracket_count = 1;
+        while (command[i] != NULL && bracket_count > 0) {
+            if (strcmp(command[i], "{") == 0) {
+                bracket_count++;
+            } else if (strcmp(command[i], "}") == 0) {
+                bracket_count--;
+            }
+            i++;
+        }
+        if (bracket_count != 0) {
+            write(STDERR_FILENO, "Erreur syntaxique\n", 19); // }
+            return 2;
+        }
+        int cmd_else_end = i - 2;
+
+        cmd_else_str = tokens_to_string(&command[cmd_else_start], cmd_else_end - cmd_else_start + 1);
         has_else = true;
     }
 
-    // find cmd2 delimited by { }
-    char* cmd2[10] = {0};
-    if (has_else) {
-        // check for missing {
-        if (command[i+2] == NULL || strcmp(command[i+2], "{") != 0) {
-            write(STDERR_FILENO, "Syntax error : missing '{' after else.\n", 39);
-            return 1;
-        }
-
-        i += 3; // Skip the '} else {'
-        j = 0;
-        while (command[i] != NULL && strcmp(command[i], "}") != 0) {
-            cmd2[j] = command[i];
-            i++;
-            j++;
-        }
-        cmd2[j] = NULL; 
-
-        // check for missing }
-        if (command[i] == NULL) {
-            write(STDERR_FILENO, "Syntax error : missing '}.'\n", 29);
-            return 1;
-        }
+    // On analyse et exécute la commande test
+    int test_result = execute_command(test_cmd);
+    //On libère la mémoire du test
+    for (int j = 0; test_cmd[j] != NULL; j++) {
+        free(test_cmd[j]);
     }
+    free(test_cmd);
 
-    // debug 
-    // printf("cmd2\n");
-    // for (int k = 0; k < 10; k++) {
-    //     if (cmd2[k] != NULL) {
-    //         printf("%s ", cmd2[k]);
-    //     }
-    //     printf("\n");
-    // }
-
-    // Execute the test command
-    
-    // debug
-    // printf("last_status: %d\n", last_status);
-    if (execute_command(test) == 0) {
-        return execute_command(cmd1);
+    int return_val = 0;
+    if (test_result == 0) {
+        return_val = execute_block(cmd_if_str); // on exécute le block du if ( commande simple ou structurée )
     } else if (has_else) {
-        return execute_command(cmd2);
+        return_val = execute_block(cmd_else_str); // même chose pour le block else
+    }
+
+    //On LIBÈRE la mémoire
+    free(cmd_if_str); 
+    if (cmd_else_str) {
+        free(cmd_else_str);
     }
 
 
-    return 0;
+    return return_val;
 }
