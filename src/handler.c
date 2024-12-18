@@ -241,8 +241,10 @@ char *trim_spaces(char *str) {
     for (int i = 0; i < num_commands; i++) {
         pids[i] = fork();
         if (pids[i] == 0) {
-            if (i > 0) dup2(pipefds[2 * (i - 1)], STDIN_FILENO);
-            if (i < num_commands - 1) dup2(pipefds[2 * i + 1], STDOUT_FILENO);
+        if (i > 0)
+            dup2(pipefds[2 * (i - 1)], STDIN_FILENO);
+        if (i < num_commands - 1)
+            dup2(pipefds[2 * i + 1], STDOUT_FILENO);
 
             for (int j = 0; j < 2 * (num_commands - 1); j++) close(pipefds[j]);
 
