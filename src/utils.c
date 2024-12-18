@@ -20,126 +20,158 @@
 // Macros
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-int for_syntax (char** command, int optindex) {
-        // Vérification de la syntaxe de la commande for
-    if (command[0] == NULL || strcmp(command[0], "for") != 0) {
-        write(STDERR_FILENO, "Erreur : la commande doit commencer par 'for'\n", 47);
-        return 1;
+#define MAX_DEPTH 100
+
+
+int for_syntaxe(char **command) {
+    // Vérification de la syntaxe de base du 'for'
+    int argc = 0;
+    while (command[argc] != NULL) {
+        argc++;
     }
-    if (command[1] == NULL){
-        // La variable de boucle
-        write(STDERR_FILENO, "Erreur : variable manquante après 'for'\n", 41);
-        return 1;
+
+    if (argc < 4) {
+        write(STDERR_FILENO, "Usage: for f in dir { cmd $f }\n", 31);
+        return 2;
     }
-    if (strlen(command[1]) != 1) {
-        char buffer[256];
-        int len = snprintf(buffer, sizeof(buffer), "Erreur : la variable de boucle '%s' doit être limitée à un caractère\n", command[1]);
-        write(STDERR_FILENO, buffer, len);
-        return 1;
+
+    if (strcmp(command[2], "in") != 0) {
+        write(STDERR_FILENO, "Erreur : mot-clé 'in' manquant après la variable.\n", 50);
+        return 2;
     }
-    if (command[2] == NULL  || strcmp(command[2], "in") !=  0) {
-        // Mot-clé 'in'
-        write(STDERR_FILENO, "Erreur : mot-clé 'in' manquant après la variable de boucle ou espaces incorrects\n", 83);
-        return 1;
-    }
-    if(command[3] == NULL) {
-        // Le répertoire
-        write(STDERR_FILENO, "Erreur : répertoire cible manquant après 'in'\n", 48);
-        return 1;
-    }
-    if (command[optindex] == NULL || strcmp(command[optindex], "{") != 0) {
-        // Accolade ouvrante {
-        write(STDERR_FILENO, "Erreur : '{' manquante ou mal positionnée pour ouvrir la commande structurée \n", 80);
-        return 1;
-    } else {
-        // La fin par '}'
-        int i = optind + 1;
-        while (command[i] != NULL) {
-            if (strcmp(command[i], "}") == 0) {
-                break;
-            }
-            i++;
+
+    // Vérification de la présence de '{' et '}'
+    int has_open_bracket = 0, has_close_bracket = 0;
+    for (int i = 0; command[i] != NULL; i++) {
+        if (strcmp(command[i], "{") == 0) {
+            has_open_bracket = 1;
         }
-        if (command[i] == NULL) {
-            write(STDERR_FILENO, "Erreur : '}' manquant pour fermer la commande structurée ou espaces incorrects\n", 80);
-            return 1;
-        } 
-        return 0;
+        if (strcmp(command[i], "}") == 0) {
+            has_close_bracket = 1;
+        }
     }
+
+    if (!has_open_bracket || !has_close_bracket) {
+        write(STDERR_FILENO, "Erreur : accolades manquantes pour délimiter la commande\n", 58);
+        return 2;
+    }
+
+    return 0;
 }
 
-int do_for(char** command, int optindex, char var, char* full_path, int extension) {
-    char** new_command = constructor(command, optindex, full_path, var, extension);
-    int return_val = execute_command(new_command);
-
-    for (size_t i = 1; new_command[i] != NULL; i++) {
-            free(new_command[i]);
+// Parcoure un répertoire et exécute des commandes sur chaque fichier/s.rep
+/*
+    * directory : le répertoire à parcourir
+    * cmd_str : la commande à exécuter
+    * hidden : 1 pour inclure les fichiers cachés, 0 sinon
+    * recursive : 1 pour parcourir récursivement les sous-répertoires, 0 sinon
+    * extension : 1 pour filtrer par extension, 0 sinon
+    * EXT : l'extension à filtrer
+    * type : 1 pour filtrer par type (fichier, répertoire, lien symbolique, fifo), 0 sinon
+    * TYPE : le type à filtrer
+    * var : la variable à remplacer dans la commande
+    * return_val : la valeur de retour actuelle
+    * depth : la profondeur actuelle de récursion
+    * return : la valeur de retour maximale
+ */
+int browse_directory(const char *directory, char *cmd_str, int hidden, int recursive, int extension, char *EXT, int type, char TYPE, char var, int return_val, int depth) {
+    // Limiter la profondeur de récursion
+    if (depth > MAX_DEPTH) {
+        write(STDERR_FILENO, "browse_directory: Profondeur de récursion trop élevée.\n", 56);
+        return 1;
     }
-    free(new_command);
 
-    return return_val;
-}
-
-int browse_directory(const char *directory, int hidden, int recursive, int extension, char* EXT, int type, char TYPE, char var, char **command, int optindex, int return_val) {
+    DIR *dp;
     struct dirent *entry;
-    DIR *dp = opendir(directory);
-    int result = return_val;
 
+    dp = opendir(directory);
     if (dp == NULL) {
         perror("opendir");
         return 1;
     }
 
     while ((entry = readdir(dp)) != NULL) {
-        // hidden files check
-        if (!hidden && entry->d_name[0] == '.') {
+        // Ignorer '.' et '..'
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
             continue;
-        }
 
-        // extension check
-        if (extension) {
-            const char* dot = strrchr(entry->d_name, '.');
-            if (!dot || strcmp(EXT, dot+1) != 0) continue;
-        }
+        // Gérer les fichiers cachés
+        if (!hidden && entry->d_name[0] == '.')
+            continue;
 
-        char full_path[1024];
+        char full_path[PATH_MAX];
         snprintf(full_path, sizeof(full_path), "%s/%s", directory, entry->d_name);
 
-        // Get file information
+        // Obtenir les informations du fichier
         struct stat file_stat;
         if (lstat(full_path, &file_stat) == -1) {
-            perror("stat");
+            perror("lstat");
+            return_val = 1;
             continue;
         }
 
-        // skip . and ..
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-            continue;
-        }
-
-
-        // type check
-        if ((!type )|| 
-        (type && TYPE == 'f' && S_ISREG(file_stat.st_mode)) || 
-        (type && TYPE == 'd' && S_ISDIR(file_stat.st_mode)) ||
-        (type && TYPE == 'l' && S_ISLNK(file_stat.st_mode)) || 
-        (type && TYPE == 'p' && S_ISFIFO(file_stat.st_mode)) ) {
-            result =  do_for(command, optindex, var, full_path, extension);
-            return_val = MAX(return_val, result);
-        }
-
-        // recursion check
+        // Parcours récursif des sous-répertoires
         if (recursive && S_ISDIR(file_stat.st_mode)) {
-            result = browse_directory(full_path, hidden, recursive, extension, EXT, type, TYPE, var, command, optindex, return_val);
-            return_val = MAX(return_val, result);
+            int sub_return_val = browse_directory(full_path, cmd_str, hidden, recursive, extension, EXT, type, TYPE, var, return_val, depth + 1);
+            return_val = MAX(return_val, sub_return_val);
         }
+
+        // Vérifier le type si nécessaire
+        if (type) {
+            if ((TYPE == 'f' && !S_ISREG(file_stat.st_mode)) ||
+                (TYPE == 'd' && !S_ISDIR(file_stat.st_mode)) ||
+                (TYPE == 'l' && !S_ISLNK(file_stat.st_mode)) ||
+                (TYPE == 'p' && !S_ISFIFO(file_stat.st_mode))) {
+                continue;
+            }
+        }
+
+        // Vérifier l'extension si nécessaire
+        char *var_value;
+        if (extension) {
+            char *dot = strrchr(entry->d_name, '.');
+            if (!dot || strcmp(dot + 1, EXT) != 0) {
+                continue;
+            }
+            // Amputer l'extension et inclure le chemin
+            size_t name_len = dot - entry->d_name;
+            size_t dir_len = strlen(directory);
+            var_value = malloc(dir_len + 1 + name_len + 1); // +1 pour '/' et +1 pour '\0'
+            if (!var_value) {
+                perror("malloc");
+                return_val = 1;
+                continue;
+            }
+            snprintf(var_value, dir_len + 1 + name_len + 1, "%s/%.*s", directory, (int)name_len, entry->d_name);
+        } else {
+            var_value = strdup(full_path);
+            if (!var_value) {
+                perror("strdup");
+                return_val = 1;
+                continue;
+            }
+        }
+
+        // Remplacer la variable par la valeur appropriée
+        char var_str[3] = {'$', var, '\0'};
+        char *replaced_cmd = replace_var_with_path(cmd_str, var_str, var_value);
+        free(var_value);
+        if (!replaced_cmd) {
+            write(STDERR_FILENO, "Erreur lors du remplacement de la variable.\n", 44);
+            return_val = 1;
+            continue;
+        }
+
+        // Exécuter les commandes remplacées
+        int result = execute_block(replaced_cmd);
+        return_val = MAX(return_val, result);
+        free(replaced_cmd);
     }
 
     if (closedir(dp) == -1) {
         perror("closedir");
-        return 2;
+        return 1;
     }
-
     return return_val;
 }
 
@@ -189,34 +221,93 @@ char* replace_var_with_path(const char* str, const char* var, const char* replac
     return result;
 }
 
-char** constructor(char** command, int optindex, char* full_path, char var, int extension) {
-    // Allocate memory for the new command array
-    char** new_command = malloc(10 * sizeof(char*));
-    if (new_command == NULL) {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
+int constructor(char **command, char *var, char **directory, int *hidden, int *recursive, int *extension, char **EXT, int *type, char *TYPE, char **cmd_str) {
+    // Extraction de la variable et du répertoire
+    *var = command[1][0];
+    *directory = command[3];
 
-    new_command[0] = command[optindex + 1];
-
-    size_t i = 1;
-    char var_str[3] = {'$', var, '\0'}; 
-
-    if (extension) {
-    char* dot = strrchr(full_path, '.');
-    if (dot) {
-        *dot = '\0';  // Truncate the string at the dot
-    }
-}
-
-    while (command[i + optindex + 1] != NULL && i < 10 && strcmp(command[i + optindex + 1], "}") != 0) {  
-        new_command[i] = replace_var_with_path(command[i + optindex + 1], var_str, full_path);
+    // Analyse des options
+    int i = 4; // Position après 'in' et le répertoire
+    while (command[i] != NULL && command[i][0] == '-') {
+        if (strcmp(command[i], "-A") == 0) {
+            *hidden = 1;
+        } else if (strcmp(command[i], "-r") == 0) {
+            *recursive = 1;
+        } else if (strcmp(command[i], "-e") == 0) {
+            if (command[i+1] != NULL) {
+                *extension = 1;
+                *EXT = command[i+1];
+                i++;
+            } else {
+                write(STDERR_FILENO, "Erreur : option '-e' nécessite un argument.\n", 42);
+                return 1;
+            }
+        } else if (strcmp(command[i], "-t") == 0) {
+            if (command[i+1] != NULL && strlen(command[i+1]) == 1) {
+                *type = 1;
+                *TYPE = command[i+1][0];
+                i++;
+            } else {
+                write(STDERR_FILENO, "Erreur : option '-t' nécessite un argument d'un caractère.\n", 62);
+                return 1;
+            }
+        } else {
+            char buffer[256];
+            int len = snprintf(buffer, sizeof(buffer), "Erreur : option inconnue '%s'\n", command[i]);
+            write(STDERR_FILENO, buffer, len);
+            return 1;
+        }
         i++;
     }
 
-    new_command[i] = NULL; // Null-terminate the array
-    return new_command;
+    // Extraction du bloc de commandes entre '{' et '}'
+    if (command[i] == NULL || strcmp(command[i], "{") != 0) {
+        write(STDERR_FILENO, "Erreur : '{' manquante ou mal positionnée pour ouvrir la commande structurée.\n", 81);
+        return 1;
+    }
+
+    // On cherche la fin du bloc '{...}
+    int bracket_count = 1;
+    int cmd_start = i + 1;
+    int cmd_end = -1;
+    for (int j = i + 1; command[j] != NULL; j++) {
+        if (strcmp(command[j], "{") == 0) {
+            bracket_count++;
+        } else if (strcmp(command[j], "}") == 0) {
+            bracket_count--;
+            if (bracket_count == 0) {
+                cmd_end = j;
+                break;
+            }
+        }
+    }
+
+    if (bracket_count != 0) {
+        write(STDERR_FILENO, "Erreur de syntaxe : accolades manquantes ou mal placées.\n", 58);
+        return 1;
+    }
+
+    // Construire la chaîne de commande
+    size_t total_length = 0;
+    for (int j = cmd_start; j < cmd_end; j++) {
+        total_length += strlen(command[j]) + 1; // +1 pour l'espace
+    }
+
+    *cmd_str = malloc(total_length + 1); // +1 pour le '\0'
+    if (!*cmd_str) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+    (*cmd_str)[0] = '\0';
+
+    for (int j = cmd_start; j < cmd_end; j++) {
+        strcat(*cmd_str, command[j]);
+        strcat(*cmd_str, " ");
+    }
+
+    return 0;
 }
+
 
 
 // Méthode interne 
@@ -272,65 +363,33 @@ char* tokens_to_string(char** tokens, int count) {
 }
 
 
-int for_loop(char** command){
-    int argc = 0;
-    int opt = 0;
-    int recursive = 0, hidden =0, extension=0, type=0, parallelism = 0;
-    char* EXT, TYPE, *MAX_THREADS;
-
-    // calculate argc
-    while (command[argc] != NULL) {
-        argc++;
+int for_loop(char **command) {
+    // Étape 1 : Vérification de la syntaxe du 'for' en utilisant 'for_syntaxe'
+    int syntax_check = for_syntaxe(command);
+    if (syntax_check != 0) {
+        return syntax_check;
     }
 
-    if (argc < 4) {
-        write(STDERR_FILENO, "Usage: for f in dir [-A] [-r] [-e] [-t] [-p] { cmd $f }\n", 56);
-        return 1;
-    }
-    
-    char var = command[1][0]; // variable (only one letter)
-    char* directory = command[3]; 
+    // Étape 2 : Extraction de la variable, le répertoire et les options à l'aide de 'constructor'
+    char var;
+    char *directory;
+    int hidden = 0, recursive = 0, extension = 0, type = 0;
+    char *EXT = NULL;
+    char TYPE = '\0';
+    char *cmd_str = NULL;
 
-    optind = 4;
-
-    while ((opt = getopt(argc, command, "Are:t:p:")) != -1) {
-        switch (opt) {
-            case 'A':
-                hidden++;
-                break;
-            case 'r':
-                recursive++;
-                break;
-            case 'e':
-                extension++;
-                EXT = optarg;
-                break;
-            case 't':
-                type++;
-                TYPE = optarg[0];
-                if (TYPE != 'd' && TYPE != 'f' && TYPE != 'l' && TYPE != 'p') {
-                    write(STDERR_FILENO, "Error: type must be 'd' or 'f' or 'l' or 'p'\n", 45);
-                    return 1;
-                }
-                break;
-            case 'p':
-                parallelism++;
-                MAX_THREADS = optarg;
-                break;
-            case '?':
-                write(STDERR_FILENO, "Usage: for f in dir [-A] [-r] [-e] [-t] [-p] { cmd $f }\n", 56);
-                return 1;
-        }
-        
+    int constructor_result = constructor(command, &var, &directory, &hidden, &recursive, &extension, &EXT, &type, &TYPE, &cmd_str);
+    if (constructor_result != 0) {
+        return constructor_result;
     }
 
+    // Étape 3 : Parcour du répertoire en utilisant 'browse_directory'
+    int return_val = 0;
+    return_val = browse_directory(directory, cmd_str, hidden, recursive, extension, EXT, type, TYPE, var, return_val, 0);
 
-    // syntax check
-    if (for_syntax(command, optind) == 1 ) return 1 ;
-
-    return browse_directory(directory, hidden, recursive, extension, EXT, type, TYPE, var, command, optind, 0);
-
-    
+    // Libération de la mémoire allouée
+    free(cmd_str);
+    return return_val;
 }
 
 
