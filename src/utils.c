@@ -20,52 +20,40 @@
 // Macros
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-int for_syntax (char** command, int optindex) {
-        // Vérification de la syntaxe de la commande for
-    if (command[0] == NULL || strcmp(command[0], "for") != 0) {
-        write(STDERR_FILENO, "Erreur : la commande doit commencer par 'for'\n", 47);
-        return 1;
+int for_syntaxe(char **command) {
+    // Vérification de la syntaxe de base du 'for'
+    int argc = 0;
+    while (command[argc] != NULL) {
+        argc++;
     }
-    if (command[1] == NULL){
-        // La variable de boucle
-        write(STDERR_FILENO, "Erreur : variable manquante après 'for'\n", 41);
-        return 1;
+
+    if (argc < 4) {
+        write(STDERR_FILENO, "Usage: for f in dir { cmd $f }\n", 31);
+        return 2;
     }
-    if (strlen(command[1]) != 1) {
-        char buffer[256];
-        int len = snprintf(buffer, sizeof(buffer), "Erreur : la variable de boucle '%s' doit être limitée à un caractère\n", command[1]);
-        write(STDERR_FILENO, buffer, len);
-        return 1;
+
+    if (strcmp(command[2], "in") != 0) {
+        write(STDERR_FILENO, "Erreur : mot-clé 'in' manquant après la variable.\n", 50);
+        return 2;
     }
-    if (command[2] == NULL  || strcmp(command[2], "in") !=  0) {
-        // Mot-clé 'in'
-        write(STDERR_FILENO, "Erreur : mot-clé 'in' manquant après la variable de boucle ou espaces incorrects\n", 83);
-        return 1;
-    }
-    if(command[3] == NULL) {
-        // Le répertoire
-        write(STDERR_FILENO, "Erreur : répertoire cible manquant après 'in'\n", 48);
-        return 1;
-    }
-    if (command[optindex] == NULL || strcmp(command[optindex], "{") != 0) {
-        // Accolade ouvrante {
-        write(STDERR_FILENO, "Erreur : '{' manquante ou mal positionnée pour ouvrir la commande structurée \n", 80);
-        return 1;
-    } else {
-        // La fin par '}'
-        int i = optind + 1;
-        while (command[i] != NULL) {
-            if (strcmp(command[i], "}") == 0) {
-                break;
-            }
-            i++;
+
+    // Vérification de la présence de '{' et '}'
+    int has_open_bracket = 0, has_close_bracket = 0;
+    for (int i = 0; command[i] != NULL; i++) {
+        if (strcmp(command[i], "{") == 0) {
+            has_open_bracket = 1;
         }
-        if (command[i] == NULL) {
-            write(STDERR_FILENO, "Erreur : '}' manquant pour fermer la commande structurée ou espaces incorrects\n", 80);
-            return 1;
-        } 
-        return 0;
+        if (strcmp(command[i], "}") == 0) {
+            has_close_bracket = 1;
+        }
     }
+
+    if (!has_open_bracket || !has_close_bracket) {
+        write(STDERR_FILENO, "Erreur : accolades manquantes pour délimiter la commande\n", 58);
+        return 2;
+    }
+
+    return 0;
 }
 
 int do_for(char** command, int optindex, char var, char* full_path, int extension) {
