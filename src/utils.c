@@ -363,65 +363,33 @@ char* tokens_to_string(char** tokens, int count) {
 }
 
 
-int for_loop(char** command){
-    int argc = 0;
-    int opt = 0;
-    int recursive = 0, hidden =0, extension=0, type=0, parallelism = 0;
-    char* EXT, TYPE, *MAX_THREADS;
-
-    // calculate argc
-    while (command[argc] != NULL) {
-        argc++;
+int for_loop(char **command) {
+    // Étape 1 : Vérification de la syntaxe du 'for' en utilisant 'for_syntaxe'
+    int syntax_check = for_syntaxe(command);
+    if (syntax_check != 0) {
+        return syntax_check;
     }
 
-    if (argc < 4) {
-        write(STDERR_FILENO, "Usage: for f in dir [-A] [-r] [-e] [-t] [-p] { cmd $f }\n", 56);
-        return 1;
-    }
-    
-    char var = command[1][0]; // variable (only one letter)
-    char* directory = command[3]; 
+    // Étape 2 : Extraction de la variable, le répertoire et les options à l'aide de 'constructor'
+    char var;
+    char *directory;
+    int hidden = 0, recursive = 0, extension = 0, type = 0;
+    char *EXT = NULL;
+    char TYPE = '\0';
+    char *cmd_str = NULL;
 
-    optind = 4;
-
-    while ((opt = getopt(argc, command, "Are:t:p:")) != -1) {
-        switch (opt) {
-            case 'A':
-                hidden++;
-                break;
-            case 'r':
-                recursive++;
-                break;
-            case 'e':
-                extension++;
-                EXT = optarg;
-                break;
-            case 't':
-                type++;
-                TYPE = optarg[0];
-                if (TYPE != 'd' && TYPE != 'f' && TYPE != 'l' && TYPE != 'p') {
-                    write(STDERR_FILENO, "Error: type must be 'd' or 'f' or 'l' or 'p'\n", 45);
-                    return 1;
-                }
-                break;
-            case 'p':
-                parallelism++;
-                MAX_THREADS = optarg;
-                break;
-            case '?':
-                write(STDERR_FILENO, "Usage: for f in dir [-A] [-r] [-e] [-t] [-p] { cmd $f }\n", 56);
-                return 1;
-        }
-        
+    int constructor_result = constructor(command, &var, &directory, &hidden, &recursive, &extension, &EXT, &type, &TYPE, &cmd_str);
+    if (constructor_result != 0) {
+        return constructor_result;
     }
 
+    // Étape 3 : Parcour du répertoire en utilisant 'browse_directory'
+    int return_val = 0;
+    return_val = browse_directory(directory, cmd_str, hidden, recursive, extension, EXT, type, TYPE, var, return_val, 0);
 
-    // syntax check
-    if (for_syntax(command, optind) == 1 ) return 1 ;
-
-    return browse_directory(directory, hidden, recursive, extension, EXT, type, TYPE, var, command, optind, 0);
-
-    
+    // Libération de la mémoire allouée
+    free(cmd_str);
+    return return_val;
 }
 
 
