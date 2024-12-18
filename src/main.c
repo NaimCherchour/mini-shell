@@ -64,21 +64,21 @@ int main() {
             exit_shell(NULL);  // exit avec last_status 
         }
 
-        if (strlen(line) > 0) {
-    add_history(line);
-    char **parsed_line = parse_input(line);
-    char ***commands = cutout_commands(parsed_line);
+      if (strlen(line) > 0) {
+    add_history(line); // On ajoute la commande à l'historique
 
-    last_status = handle_commands(commands);
+    // Parser la ligne complète pour exécuter les commandes et gérer les pipes
+    char **parsed_line = parse_input(line);       // Découper la ligne en arguments
+    char ***commands = cutout_commands(parsed_line); // Découper les commandes par ';'
+    
+    last_status = handle_commands(commands);  // Appeler handle_commands qui gère tout
 
+    // Libérer la mémoire
     free_commands(commands);
-    for (int i = 0; parsed_line[i] != NULL; i++) free(parsed_line[i]);
+    for (int i = 0; parsed_line[i] != NULL; i++) {
+        free(parsed_line[i]);
+    }
     free(parsed_line);
-}
-
-if (strlen(line) == 0) {
-    free(line);
-    continue;
 }
 
 
