@@ -20,6 +20,9 @@
 // Macros
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
+#define MAX_DEPTH 100
+
+
 int for_syntaxe(char **command) {
     // Vérification de la syntaxe de base du 'for'
     int argc = 0;
@@ -56,78 +59,119 @@ int for_syntaxe(char **command) {
     return 0;
 }
 
-int do_for(char** command, int optindex, char var, char* full_path, int extension) {
-    char** new_command = constructor(command, optindex, full_path, var, extension);
-    int return_val = execute_command(new_command);
-
-    for (size_t i = 1; new_command[i] != NULL; i++) {
-            free(new_command[i]);
+// Parcoure un répertoire et exécute des commandes sur chaque fichier/s.rep
+/*
+    * directory : le répertoire à parcourir
+    * cmd_str : la commande à exécuter
+    * hidden : 1 pour inclure les fichiers cachés, 0 sinon
+    * recursive : 1 pour parcourir récursivement les sous-répertoires, 0 sinon
+    * extension : 1 pour filtrer par extension, 0 sinon
+    * EXT : l'extension à filtrer
+    * type : 1 pour filtrer par type (fichier, répertoire, lien symbolique, fifo), 0 sinon
+    * TYPE : le type à filtrer
+    * var : la variable à remplacer dans la commande
+    * return_val : la valeur de retour actuelle
+    * depth : la profondeur actuelle de récursion
+    * return : la valeur de retour maximale
+ */
+int browse_directory(const char *directory, char *cmd_str, int hidden, int recursive, int extension, char *EXT, int type, char TYPE, char var, int return_val, int depth) {
+    // Limiter la profondeur de récursion
+    if (depth > MAX_DEPTH) {
+        write(STDERR_FILENO, "browse_directory: Profondeur de récursion trop élevée.\n", 56);
+        return 1;
     }
-    free(new_command);
 
-    return return_val;
-}
-
-int browse_directory(const char *directory, int hidden, int recursive, int extension, char* EXT, int type, char TYPE, char var, char **command, int optindex, int return_val) {
+    DIR *dp;
     struct dirent *entry;
-    DIR *dp = opendir(directory);
-    int result = return_val;
 
+    dp = opendir(directory);
     if (dp == NULL) {
         perror("opendir");
         return 1;
     }
 
     while ((entry = readdir(dp)) != NULL) {
-        // hidden files check
-        if (!hidden && entry->d_name[0] == '.') {
+        // Ignorer '.' et '..'
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
             continue;
-        }
 
-        // extension check
-        if (extension) {
-            const char* dot = strrchr(entry->d_name, '.');
-            if (!dot || strcmp(EXT, dot+1) != 0) continue;
-        }
+        // Gérer les fichiers cachés
+        if (!hidden && entry->d_name[0] == '.')
+            continue;
 
-        char full_path[1024];
+        char full_path[PATH_MAX];
         snprintf(full_path, sizeof(full_path), "%s/%s", directory, entry->d_name);
 
-        // Get file information
+        // Obtenir les informations du fichier
         struct stat file_stat;
         if (lstat(full_path, &file_stat) == -1) {
-            perror("stat");
+            perror("lstat");
+            return_val = 1;
             continue;
         }
 
-        // skip . and ..
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-            continue;
-        }
-
-
-        // type check
-        if ((!type )|| 
-        (type && TYPE == 'f' && S_ISREG(file_stat.st_mode)) || 
-        (type && TYPE == 'd' && S_ISDIR(file_stat.st_mode)) ||
-        (type && TYPE == 'l' && S_ISLNK(file_stat.st_mode)) || 
-        (type && TYPE == 'p' && S_ISFIFO(file_stat.st_mode)) ) {
-            result =  do_for(command, optindex, var, full_path, extension);
-            return_val = MAX(return_val, result);
-        }
-
-        // recursion check
+        // Parcours récursif des sous-répertoires
         if (recursive && S_ISDIR(file_stat.st_mode)) {
-            result = browse_directory(full_path, hidden, recursive, extension, EXT, type, TYPE, var, command, optindex, return_val);
-            return_val = MAX(return_val, result);
+            int sub_return_val = browse_directory(full_path, cmd_str, hidden, recursive, extension, EXT, type, TYPE, var, return_val, depth + 1);
+            return_val = MAX(return_val, sub_return_val);
         }
+
+        // Vérifier le type si nécessaire
+        if (type) {
+            if ((TYPE == 'f' && !S_ISREG(file_stat.st_mode)) ||
+                (TYPE == 'd' && !S_ISDIR(file_stat.st_mode)) ||
+                (TYPE == 'l' && !S_ISLNK(file_stat.st_mode)) ||
+                (TYPE == 'p' && !S_ISFIFO(file_stat.st_mode))) {
+                continue;
+            }
+        }
+
+        // Vérifier l'extension si nécessaire
+        char *var_value;
+        if (extension) {
+            char *dot = strrchr(entry->d_name, '.');
+            if (!dot || strcmp(dot + 1, EXT) != 0) {
+                continue;
+            }
+            // Amputer l'extension et inclure le chemin
+            size_t name_len = dot - entry->d_name;
+            size_t dir_len = strlen(directory);
+            var_value = malloc(dir_len + 1 + name_len + 1); // +1 pour '/' et +1 pour '\0'
+            if (!var_value) {
+                perror("malloc");
+                return_val = 1;
+                continue;
+            }
+            snprintf(var_value, dir_len + 1 + name_len + 1, "%s/%.*s", directory, (int)name_len, entry->d_name);
+        } else {
+            var_value = strdup(full_path);
+            if (!var_value) {
+                perror("strdup");
+                return_val = 1;
+                continue;
+            }
+        }
+
+        // Remplacer la variable par la valeur appropriée
+        char var_str[3] = {'$', var, '\0'};
+        char *replaced_cmd = replace_var_with_path(cmd_str, var_str, var_value);
+        free(var_value);
+        if (!replaced_cmd) {
+            write(STDERR_FILENO, "Erreur lors du remplacement de la variable.\n", 44);
+            return_val = 1;
+            continue;
+        }
+
+        // Exécuter les commandes remplacées
+        int result = execute_block(replaced_cmd);
+        return_val = MAX(return_val, result);
+        free(replaced_cmd);
     }
 
     if (closedir(dp) == -1) {
         perror("closedir");
-        return 2;
+        return 1;
     }
-
     return return_val;
 }
 
