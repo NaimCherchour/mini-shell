@@ -76,6 +76,12 @@ int main() {
     free(parsed_line);
 }
 
+if (strlen(line) == 0) {
+    free(line);
+    continue;
+}
+
+
         free(line); // On libère la mémoire allouée par readline
     }
 
