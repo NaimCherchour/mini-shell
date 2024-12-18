@@ -231,6 +231,11 @@ int handle_pipes(char *line) {
         if (pipe(pipefds + 2 * i) == -1) exit(EXIT_FAILURE);
     }
 
+if (num_commands == 0) {
+    fprintf(stderr, "Erreur : commande pipe vide détectée.\n");
+    return EXIT_FAILURE;
+}
+
 char *trim_spaces(char *str) {
     while (*str == ' ') str++; // Supprimer espaces début
     char *end = str + strlen(str) - 1;
