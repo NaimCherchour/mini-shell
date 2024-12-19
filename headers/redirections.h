@@ -12,7 +12,6 @@ typedef enum {
     STDERR,        // 2>
     STDERR_TRUNC,  // 2>|
     STDERR_APPEND, // 2>>
-    NONE          // Pas de redirection
 } RedirectionType;
 
 // Structure pour une redirection simple

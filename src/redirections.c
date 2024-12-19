@@ -9,7 +9,7 @@
 #include <linux/limits.h> // Pour #define PATH_MAX 4096
 #include <signal.h>
 #include <stdbool.h>
-#include <fcntl.h>
+#include <fcntl.h> // Pour open
 
 
 #include "../headers/redirections.h"
@@ -49,7 +49,7 @@ int detect_redirections(char** command, Redirection* redirections, int max_redir
 
         // On vérifie le fichier cible
         if (command[i + 1] == NULL) {
-            write(STDERR_FILENO, "Erreur de syntaxe : opérateur de redirection sans fichier\n",54);
+            write(STDERR_FILENO, "Erreur de syntaxe : opérateur de redirection sans fichier\n",59);
             return -1;
         }
 
@@ -57,7 +57,6 @@ int detect_redirections(char** command, Redirection* redirections, int max_redir
         redirections[redir_count].file = strdup(command[i + 1]);
         if (redirections[redir_count].file == NULL) {
             perror("strdup");
-            // free ?
             return -1;
         }
         redir_count++;

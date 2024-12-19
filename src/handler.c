@@ -251,13 +251,24 @@ int execute_command(char** command) {
 
     // On Initialise un tableau de redirections
     //TODO : ne pas restreindre le nombre de redirections
-    Redirection redirections[5];
-    int redir_count = detect_redirections(command, redirections, 5);
+    Redirection redirections[10];
+    int redir_count = detect_redirections(command, redirections, 10);
+    if (redir_count == -1) {
+        return 1; // Erreur de syntaxe : sans fichier 
+        // Question : les erreurs de synatxe d'habitude c'est 2 mais sur le sujet en cas d'échec d'une redirection c'est 1 
+
+    }
+
+    // Plus de robustesse :  vérification de la commande à exécuter après les redirections
+    if (command[0] == NULL) {
+        write(STDERR_FILENO, "Erreur de syntaxe : aucune commande à exécuter\n", 49);
+        return 2; // Code de retour pour erreurs de syntaxe
+    }
 
     // On sauvegarde les descripteurs d'origine
     int saved_fds[3];
     if (redir_count > 0 && save_file_descriptors(saved_fds) != 0) {
-        fprintf(stderr, "Erreur lors de la sauvegarde des descripteurs\n");
+        write(STDERR_FILENO, "Erreur lors de la sauvegarde des descripteurs\n", 45);
         return EXIT_FAILURE;
     }
 

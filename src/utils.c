@@ -263,7 +263,7 @@ int constructor(char **command, char *var, char **directory, int *hidden, int *r
     // Extraction du bloc de commandes entre '{' et '}'
     if (command[i] == NULL || strcmp(command[i], "{") != 0) {
         write(STDERR_FILENO, "Erreur : '{' manquante ou mal positionnée pour ouvrir la commande structurée.\n", 81);
-        return 1;
+        return 2;
     }
 
     // On cherche la fin du bloc '{...}
@@ -383,6 +383,8 @@ int for_loop(char **command) {
         return constructor_result;
     }
 
+    
+
     // Étape 3 : Parcour du répertoire en utilisant 'browse_directory'
     int return_val = 0;
     return_val = browse_directory(directory, cmd_str, hidden, recursive, extension, EXT, type, TYPE, var, return_val, 0);
@@ -392,101 +394,217 @@ int for_loop(char **command) {
     return return_val;
 }
 
+// Vérifie si la condition 'TEST' est un pipeline valide
+bool is_valid_test_condition(char **test_cmd_tokens, int token_count) {
+    if (strcmp(test_cmd_tokens[0], "if") == 0 || strcmp(test_cmd_tokens[0], "for") == 0)   {
+        return false;
+    }
+    for (int i = 0; i < token_count; i++) {
+        if (strcmp(test_cmd_tokens[i], ";") == 0 ){
+            return false; 
+        }
+    }
+    return true;
+}
 
 // if TEST { CMD } else { CMD }
 // TEST is a pipeline of commands that return 0 or 1
 int if_else(char** command) {
-    // find test delimited by if and {
-    int i = 1;
-    int test_start = i; 
+    int i = 1; // 'if' est à command[0]
+    int argc = 0;
+    while (command[argc] != NULL) {
+        argc++;
+    }
+
+    // Vérification de la présence de la condition
+    if (command[i] == NULL) {
+        write(STDERR_FILENO, "Erreur de syntaxe : condition manquante après 'if'\n", 53);
+        return 2;
+    }
+
+    // Extraction de la condition jusqu'à la première '{'
+    int test_start = i;
     while (command[i] != NULL && strcmp(command[i], "{") != 0) {
         i++;
     }
-    // check for missing {
-    if (command[i] == NULL) {
-        write(STDERR_FILENO, "Syntax error : missing '{'.\n", 29);
-        return 2; //TODO : à vérifier si c'est la bonne valeur de retour pour les erreurs de syntaxe ( serveur discord )
-    }
-    int test_end = i - 1; 
 
-    // find cmd delimited by { }
-    char** test_cmd = malloc((test_end - test_start + 2) * sizeof(char *));
-    for (int j = test_start, k = 0; j <= test_end; j++, k++) {
-        test_cmd[k] = strdup(command[j]); 
+    if (command[i] == NULL) {
+        write(STDERR_FILENO, "Erreur de syntaxe : '{' manquant après la condition\n", 54);
+        return 2;
     }
-    test_cmd[test_end - test_start + 1] = NULL;
+
+    int test_end = i - 1;
     
-    i++; // Skip the '{'
+    //si la condition TEST est vide
+    if (test_start > test_end) {
+        write(STDERR_FILENO, "Erreur de syntaxe : condition 'TEST' vide\n", 43);
+        return 2;
+    }
+
+    // Extraction des tokens de la condition
+    int test_token_count = test_end - test_start + 1; //Nombre de tokens dans la condition
+    char **test_cmd = malloc((test_end - test_start + 2) * sizeof(char *));
+    if (!test_cmd) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+    for (int j = test_start, k = 0; j <= test_end; j++, k++) {
+        test_cmd[k] = strdup(command[j]);
+    }
+    test_cmd[test_token_count] = NULL;
+
+    //si TEST est une commande structurée
+    if (!is_valid_test_condition(test_cmd, test_token_count)) {
+        write(STDERR_FILENO, "Fonctionnalité non gérée: 'TEST' ne peut pas contenir de commandes structurées\n", 83);
+        // Libération de la mémoire
+        for (int k = 0; k < test_token_count; k++) {
+            free(test_cmd[k]);
+        }
+        free(test_cmd);
+        return 2;
+    }
+
+    i++; // Passer '{'
     int cmd_start = i;
-    int bracket_count = 1;
-    while (command[i] != NULL && bracket_count > 0) {
-         if (strcmp(command[i], "{") == 0) {
-            bracket_count++;
+
+    // Gestion des accolades pour le bloc 'if'
+    int brace_count = 1;
+    while (command[i] != NULL && brace_count > 0) {
+        if (strcmp(command[i], "{") == 0) {
+            brace_count++;
         } else if (strcmp(command[i], "}") == 0) {
-            bracket_count--;
+            brace_count--;
+            if (brace_count == 0) {
+                break;
+            }
         }
         i++;
     }
-    if (bracket_count != 0) {
-        write(STDERR_FILENO, "Erreur syntaxique\n", 19); // }
+
+    if (brace_count != 0) {
+        write(STDERR_FILENO, "Erreur de syntaxe : accolades manquantes ou mal placées dans le bloc 'if'.\n", 76);
+        // Libération de la mémoire
+        for (int k = 0; test_cmd[k] != NULL; k++) {
+            free(test_cmd[k]);
+        }
+        free(test_cmd);
         return 2;
     }
-    int cmd_end = i - 2;
 
-    //On converti les tokens en chaîne 
+    int cmd_end = i - 1; // Dernier token avant '}'
+
+    // Conversion des tokens du bloc 'if' en une chaîne de caractères
     char *cmd_if_str = tokens_to_string(&command[cmd_start], cmd_end - cmd_start + 1);
 
-    // check for else
+    i++; // Passer '}'
+
+    // Vérifier la présence d'un 'else' ou de tokens supplémentaires
     bool has_else = false;
-    char *cmd_else_str = NULL; 
+    char *cmd_else_str = NULL;
+
     if (command[i] != NULL && strcmp(command[i], "else") == 0) {
-        i++; // Passe le 'else'
+        i++; // Passer 'else'
+
         if (command[i] == NULL || strcmp(command[i], "{") != 0) {
-            write(STDERR_FILENO, "Syntax error : missing '{' after else.\n", 39);
+            write(STDERR_FILENO, "Erreur de syntaxe : '{' manquant après 'else'.\n", 48);
+            free(cmd_if_str);
+            for (int k = 0; test_cmd[k] != NULL; k++) {
+                free(test_cmd[k]);
+            }
+            free(test_cmd);
             return 2;
         }
+
         i++; // Passer '{'
-        int cmd_else_start = i;
-        bracket_count = 1;
-        while (command[i] != NULL && bracket_count > 0) {
+        int else_start = i;
+
+        // Gestion des accolades pour le bloc 'else'
+        brace_count = 1;
+        while (command[i] != NULL && brace_count > 0) {
             if (strcmp(command[i], "{") == 0) {
-                bracket_count++;
+                brace_count++;
             } else if (strcmp(command[i], "}") == 0) {
-                bracket_count--;
+                brace_count--;
+                if (brace_count == 0) {
+                    break;
+                }
             }
             i++;
         }
-        if (bracket_count != 0) {
-            write(STDERR_FILENO, "Erreur syntaxique\n", 19); // }
+
+        if (brace_count != 0) {
+            write(STDERR_FILENO, "Erreur de syntaxe : accolades manquantes ou mal placées dans le bloc 'else'.\n", 75);
+            free(cmd_if_str);
+            for (int k = 0; test_cmd[k] != NULL; k++) {
+                free(test_cmd[k]);
+            }
+            free(test_cmd);
             return 2;
         }
-        int cmd_else_end = i - 2;
 
-        cmd_else_str = tokens_to_string(&command[cmd_else_start], cmd_else_end - cmd_else_start + 1);
+        int else_end = i - 1; // Dernier token avant '}'
+
+        // Conversion des tokens du bloc 'else' en une chaîne de caractères
+        cmd_else_str = tokens_to_string(&command[else_start], else_end - else_start + 1);
         has_else = true;
+
+        i++; // Passer '}'
     }
 
-    // On analyse et exécute la commande test
+    // Vérifier s'il reste des tokens après le bloc 'if' ou 'else'
+    if (command[i] != NULL) {
+        write(STDERR_FILENO, "Erreur de syntaxe : tokens supplémentaires après la fin de la commande\n", 73);
+        free(cmd_if_str);
+        if (has_else) {
+            free(cmd_else_str);
+        }
+        for (int k = 0; test_cmd[k] != NULL; k++) {
+            free(test_cmd[k]);
+        }
+        free(test_cmd);
+        return 2;
+    }
+
+    // Exécution de la commande de test sans afficher la sortie
     int test_result = execute_command(test_cmd);
-    //On libère la mémoire du test
-    for (int j = 0; test_cmd[j] != NULL; j++) {
-        free(test_cmd[j]);
+
+    //Si execute_command retourne une erreur de syntaxe
+    if (test_result == 2) {
+        // Libération de la mémoire
+        for (int k = 0; test_cmd[k] != NULL; k++) {
+            free(test_cmd[k]);
+            }
+        free(test_cmd);
+        free(cmd_if_str);
+        if (has_else) {
+            free(cmd_else_str);
+        }
+        return 2;
+    }
+
+    // Libération de la mémoire des tokens de test
+    for (int k = 0; test_cmd[k] != NULL; k++) {
+        free(test_cmd[k]);
     }
     free(test_cmd);
 
     int return_val = 0;
     if (test_result == 0) {
-        return_val = execute_block(cmd_if_str); // on exécute le block du if ( commande simple ou structurée )
+        // Exécuter le bloc 'if'
+        return_val = execute_block(cmd_if_str);
     } else if (has_else) {
-        return_val = execute_block(cmd_else_str); // même chose pour le block else
+        // Exécuter le bloc 'else'
+        return_val = execute_block(cmd_else_str);
+    } else {
+        // Si pas de 'else' et condition fausse, retourner 0 et la condition est syntaxiquement correcte
+        return_val = 0;
     }
 
-    //On LIBÈRE la mémoire
-    free(cmd_if_str); 
-    if (cmd_else_str) {
+    // Libération de la mémoire
+    free(cmd_if_str);
+    if (has_else) {
         free(cmd_else_str);
     }
-
 
     return return_val;
 }
