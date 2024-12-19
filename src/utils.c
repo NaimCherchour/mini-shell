@@ -277,15 +277,16 @@ int constructor(char **command, char *var, char **directory, int *hidden, int *r
             bracket_count--;
             if (bracket_count == 0) {
                 cmd_end = j;
-                break;
+                //break;
             }
         }
     }
 
     if (bracket_count != 0) {
         write(STDERR_FILENO, "Erreur de syntaxe : accolades manquantes ou mal placées.\n", 58);
-        return 1;
+        return 2;
     }
+
 
     // Construire la chaîne de commande
     size_t total_length = 0;
@@ -398,13 +399,9 @@ int for_loop(char **command) {
 bool is_valid_test_condition(char **test_cmd_tokens, int token_count) {
     if (strcmp(test_cmd_tokens[0], "if") == 0 || strcmp(test_cmd_tokens[0], "for") == 0)   {
         return false;
+    } else {
+        return true;
     }
-    for (int i = 0; i < token_count; i++) {
-        if (strcmp(test_cmd_tokens[i], ";") == 0 ){
-            return false; 
-        }
-    }
-    return true;
 }
 
 // if TEST { CMD } else { CMD }
@@ -443,7 +440,7 @@ int if_else(char** command) {
 
     // Extraction des tokens de la condition
     int test_token_count = test_end - test_start + 1; //Nombre de tokens dans la condition
-    char **test_cmd = malloc((test_end - test_start + 2) * sizeof(char *));
+    char **test_cmd = malloc((test_token_count + 1) * sizeof(char *));
     if (!test_cmd) {
         perror("malloc");
         exit(EXIT_FAILURE);
