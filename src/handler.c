@@ -182,10 +182,6 @@ int execute_internal_command(char** command, int redir_count, int* saved_fds) {
         res = pwd(command);
     } else if (strcmp(command[0], "exit") == 0) {
         res = exit_shell(command);
-    } else if (strcmp(command[0], "for") == 0) {
-        res =  for_loop(command);
-    } else if (strcmp(command[0], "if") == 0) {
-        res =  if_else(command);
     } else {
         return -1; // Commande non interne
     }
@@ -295,11 +291,21 @@ int execute_command(char** command) {
 }
 
 // Exécute les commandes une par une ( pour les séquences de commandes , séparées par des ;)
+// et le if_else , for
 int handle_commands(char*** commands) {
     int status = 0;
     int i = 0;
     while (commands[i] != NULL) {
-        status = execute_command(commands[i]);
+        char** cmd = commands[i];
+        // On gère directement 'if' et 'for' car c'est des commandes structurées
+        if (cmd[0] != NULL && strcmp(cmd[0], "if") == 0) {
+            status = if_else(cmd);
+        } else if (cmd[0] != NULL && strcmp(cmd[0], "for") == 0) {
+            status = for_loop(cmd);
+        } else {
+            // Sinon on exécute normalement
+            status = execute_command(cmd);
+        }
         i++;
     }
     return status; // On ret la valeur de retour de la dernière commande exécutée
