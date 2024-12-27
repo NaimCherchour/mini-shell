@@ -86,17 +86,6 @@ int main() {
             }
             free(commands); //On libère  la mémoire allouée pour le tableau de commandes
         }
-        free(commands[i]); // Libérer chaque commande
-    }
-    free(commands); // Libérer le tableau de commandes
-
-    for (int i = 0; parsed_line[i] != NULL; i++) {
-        free(parsed_line[i]); // Libérer chaque argument initial
-    }
-    free(parsed_line); // Libérer le tableau initial
-}
-
-
 
         free(line); // On libère la mémoire allouée par readline
     }
