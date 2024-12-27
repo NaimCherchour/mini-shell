@@ -188,29 +188,41 @@ int execute_command(char** command) {
 // executes the commands one by one
 // TODO: detect piping and redirections
 int handle_commands(char*** commands) {
+    int status = 0;
     int i = 0;
-    while (commands[i][0] != NULL) {
+
+    while (commands[i] != NULL) {
+        char** cmd = commands[i];
+
         // Reconstruire la ligne complète pour vérifier les pipes
         char line[4096] = {0};
-        for (int j = 0; commands[i][j] != NULL; j++) {
-            strcat(line, commands[i][j]);
+        for (int j = 0; cmd[j] != NULL; j++) {
+            strcat(line, cmd[j]);
             strcat(line, " ");
         }
         line[strlen(line) - 1] = '\0'; // Retirer l'espace final
 
-        // Détection des pipes dans la ligne complète
+        // Détection des pipes
         if (strchr(line, '|')) {
-            return handle_pipes(line); // Appeler handle_pipes pour gérer les pipes
+            return handle_pipes(line); // Gérer les pipes
         }
 
-        // Commandes simples
-        int status = execute_command(commands[i]);
-        if (status != 0) return status;
+        // Commandes structurées (if, for)
+        if (cmd[0] != NULL && strcmp(cmd[0], "if") == 0) {
+            status = if_else(cmd);
+        } else if (cmd[0] != NULL && strcmp(cmd[0], "for") == 0) {
+            status = for_loop(cmd);
+        } else {
+            // Commandes simples
+            status = execute_command(cmd);
+        }
 
         i++;
     }
-    return EXIT_SUCCESS;
+
+    return status; // Retourner la valeur de la dernière commande exécutée
 }
+
 
 
 int handle_pipes(char *line) {
