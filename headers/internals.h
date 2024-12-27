@@ -4,7 +4,7 @@
 // Déclaration de la variable globale pour le répertoire précédent
 extern char rep_precedent[PATH_MAX]; 
 
-// Calculer le nombre d'arguments
+// Calcul du le nombre d'arguments
 int nb_arguments (char **args );
 
 // Déclaration de la fonction cd qui change de répertoire qui devient le répertoire REF (référence valide), le précédent répertoire de travail

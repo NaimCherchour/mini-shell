@@ -15,7 +15,7 @@ char rep_precedent[PATH_MAX]; // on sauvegarde le répertoire précédent
 
 
 int nb_arguments (char **args ) {
-    // Vérifier le nombre d'arguments
+    // Calcul le nombre d'arguments
     int argc = 0;
     while (args[argc] != NULL) {
         argc++;

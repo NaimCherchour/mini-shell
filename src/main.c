@@ -64,19 +64,27 @@ int main() {
             exit_shell(NULL);  // exit avec last_status 
         }
 
-      if (strlen(line) > 0) {
-    add_history(line); // On ajoute la commande à l'historique
+        if (strlen(line) > 0) {
+            add_history(line); // On ajoute la commande à l'historique
+            char** command = parse_input(line); // parser la commande
+            char*** commands = cutout_commands(command); // découper les commandes
+            
+            last_status = handle_commands(commands); // exécuter les commandes une par une
 
-    // Parser la ligne complète pour exécuter les commandes et gérer les pipes
-    char** parsed_line = parse_input(line); // Découper la ligne en arguments
-    char*** commands = cutout_commands(parsed_line); // Découper les commandes par ';'
+            //libérer la mémoire allouée pour les commandes
+            for (int i = 0; command[i] != NULL; i++) {
+                free(command[i]);
+            }
+            free(command);
 
-    last_status = handle_commands(commands); // Gérer les commandes (inclut les pipes)
-
-    // Libérer la mémoire
-    for (int i = 0; commands[i] != NULL; i++) {
-        for (int j = 0; commands[i][j] != NULL; j++) {
-            free(commands[i][j]); // Libérer chaque argument
+        
+            for (int i = 0; commands[i] != NULL; i++) {
+                for (int j = 0; commands[i][j] != NULL; j++) { 
+                    free(commands[i][j]);//On libère  la mémoire allouée pour chaque argument
+                }
+                free(commands[i]);// On libère la mémoire allouée  pour chaque commande
+            }
+            free(commands); //On libère  la mémoire allouée pour le tableau de commandes
         }
         free(commands[i]); // Libérer chaque commande
     }
