@@ -25,4 +25,9 @@ int execute_command(char** command);
  */
 int handle_commands(char*** commands);
 
+/**
+ * Exécute une chaîne de commandes connectées par des pipes.
+ */
+int handle_pipes(char *line);
+
 #endif
