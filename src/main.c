@@ -68,18 +68,26 @@ int main() {
     add_history(line); // On ajoute la commande à l'historique
 
     // Parser la ligne complète pour exécuter les commandes et gérer les pipes
-    char **parsed_line = parse_input(line);       // Découper la ligne en arguments
-    char ***commands = cutout_commands(parsed_line); // Découper les commandes par ';'
-    
-    last_status = handle_commands(commands);  // Appeler handle_commands qui gère tout
+    char** parsed_line = parse_input(line); // Découper la ligne en arguments
+    char*** commands = cutout_commands(parsed_line); // Découper les commandes par ';'
+
+    last_status = handle_commands(commands); // Gérer les commandes (inclut les pipes)
 
     // Libérer la mémoire
-    free_commands(commands);
-    for (int i = 0; parsed_line[i] != NULL; i++) {
-        free(parsed_line[i]);
+    for (int i = 0; commands[i] != NULL; i++) {
+        for (int j = 0; commands[i][j] != NULL; j++) {
+            free(commands[i][j]); // Libérer chaque argument
+        }
+        free(commands[i]); // Libérer chaque commande
     }
-    free(parsed_line);
+    free(commands); // Libérer le tableau de commandes
+
+    for (int i = 0; parsed_line[i] != NULL; i++) {
+        free(parsed_line[i]); // Libérer chaque argument initial
+    }
+    free(parsed_line); // Libérer le tableau initial
 }
+
 
 
         free(line); // On libère la mémoire allouée par readline
