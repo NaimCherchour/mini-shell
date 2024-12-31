@@ -46,6 +46,9 @@ int main() {
 
     write(STDOUT_FILENO, "\n", 1);
 
+    // Configuration des gestionnaires de signaux pour le shell principal
+    setup_signal_handlers();
+
     // Boucle principale pour lire les commandes utilisateur
     while (1) {
         // Générer le prompt
