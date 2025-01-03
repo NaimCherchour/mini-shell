@@ -291,22 +291,164 @@ int execute_command(char** command) {
 }
 
 // Exécute les commandes une par une ( pour les séquences de commandes , séparées par des ;)
-// et le if_else , for
+// et le if_else , for et les commandes avec des pipes
 int handle_commands(char*** commands) {
     int status = 0;
     int i = 0;
+
     while (commands[i] != NULL) {
         char** cmd = commands[i];
-        // On gère directement 'if' et 'for' car c'est des commandes structurées
+
+        // Reconstruire la ligne complète pour vérifier les pipes
+        char line[4096] = {0};
+        for (int j = 0; cmd[j] != NULL; j++) {
+            strcat(line, cmd[j]);
+            strcat(line, " ");
+        }
+        if (strlen(line) > 0) {
+            line[strlen(line) - 1] = '\0'; // Retirer l'espace final
+        }
+
+
         if (cmd[0] != NULL && strcmp(cmd[0], "if") == 0) {
             status = if_else(cmd);
         } else if (cmd[0] != NULL && strcmp(cmd[0], "for") == 0) {
             status = for_loop(cmd);
-        } else {
-            // Sinon on exécute normalement
+        } else if (strstr(line, " | ")) {  // Détection des pipes
+            status = handle_pipes(line);
+        } 
+        else {
+            // Commande simple
             status = execute_command(cmd);
         }
+
         i++;
     }
-    return status; // On ret la valeur de retour de la dernière commande exécutée
+    return status;
+}
+
+// Fonction auxiliaire 
+void run_subcommand(char **args, int index , int total_cmds) {
+
+    // Détection des redirections
+    Redirection redirections[10];
+    int redir_count = detect_redirections(args, redirections, 10);
+
+    if (redir_count == -1) {
+        exit(1);
+    }
+
+    // Les contraintes sur les redirections
+    char msg[70];
+    for (int r = 0; r < redir_count; r++) {
+        if ((redirections[r].type == STDIN) && (index != 0)) {
+            sprintf(msg, "Erreur : redirection d’entrée impossible sur CMD%d\n", index+1);
+            write(STDERR_FILENO, msg, strlen(msg));
+            exit(1);
+        }
+        if ((redirections[r].type == STDOUT || redirections[r].type == STDOUT_APPEND || redirections[r].type == STDOUT_TRUNC) 
+            && (index != total_cmds - 1)) {
+            sprintf(msg, "Erreur : redirection de sortie impossible sur CMD%d\n", index+1);
+            write(STDERR_FILENO,msg,strlen(msg));
+            exit(1);
+        }
+        // REDIR stderr autorisé
+    }
+
+    // On sauvegarde les descripteurs d'origine
+    int saved_fds[3];
+    if (redir_count > 0 && save_file_descriptors(saved_fds) != 0) {
+        write(STDERR_FILENO, "Erreur lors de la sauvegarde des descripteurs\n", 45);
+        exit(1);
+    }
+
+    // On Applique les redirections
+    if (redir_count > 0 && !apply_redirections(redirections, redir_count)) {
+        restore_file_descriptors(saved_fds);
+        exit(1);
+    }
+
+    //On exécute interne ou externe
+    int ret = execute_internal_command(args, 0, NULL);
+    if (ret == -1) {
+        ret = execute_external_command(args);
+    }
+    // On restaure les descripteurs de fichiers après l'exécution
+    if (redir_count > 0) {
+        restore_file_descriptors(saved_fds);
+    }
+    exit(ret);
+}
+
+
+// handle_pipes appelle run_subcommand pour chaque sous-commande du pipeline
+int handle_pipes(char *line) {
+    char *commands[MAX_COMMANDS]; // Tableau pour stocker les sous-commandes
+    int num_commands = 0;
+
+    // Découper la ligne en sous-commandes autour de '|'
+    char *token = strtok(line, "|");
+    while (token && num_commands < MAX_COMMANDS) {
+        while (*token == ' ') token++; // Supprimer les espaces au début
+        char *end = token + strlen(token) - 1;
+        while (end > token && *end == ' ') *end-- = '\0'; // Supprimer les espaces à la fin
+        commands[num_commands++] = strdup(token);
+        token = strtok(NULL, "|");
+    }
+    commands[num_commands] = NULL; // Terminaison
+
+    int pipefds[2 * (num_commands - 1)]; // Tableau pour stocker les pipes
+    for (int i = 0; i < num_commands - 1; i++) {
+        if (pipe(pipefds + 2 * i) == -1) {
+            perror("pipe");
+            return 1;
+        }
+    }
+
+    pid_t pids[num_commands]; // PIDs des processus enfants
+    int status = 0;
+
+    // Exécuter chaque sous-commande
+    for (int i = 0; i < num_commands; i++) {
+        pids[i] = fork();
+        if (pids[i] == 0) { // Processus enfant
+
+            // Redirection entrée
+            if (i > 0) {
+                dup2(pipefds[2 * (i - 1)], STDIN_FILENO);
+            }
+            // Redirection sortie
+            if (i < num_commands - 1) {
+                dup2(pipefds[2 * i + 1], STDOUT_FILENO);
+            }
+            // Fermer tous les pipes inutiles
+            for (int j = 0; j < 2 * (num_commands - 1); j++) {
+                close(pipefds[j]);
+            }
+            
+            // Exécuter la commande
+            char **args = parse_input(commands[i]);
+            run_subcommand(args,i,num_commands);
+        } else if (pids[i] < 0) {
+            perror("fork");
+            status = 1;
+        }
+    }
+
+    // Fermer tous les pipes dans le parent
+    for (int i = 0; i < 2 * (num_commands - 1); i++) {
+        close(pipefds[i]);
+    }
+
+    // Attendre tous les enfants
+    for (int i = 0; i < num_commands; i++) {
+        waitpid(pids[i], &status, 0);
+    }
+
+    // Libérer la mémoire
+    for (int i = 0; i < num_commands; i++) {
+        free(commands[i]);
+    }
+
+    return status;
 }
