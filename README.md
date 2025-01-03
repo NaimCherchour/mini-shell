@@ -38,13 +38,13 @@ make clean
 - [x] Local commands
 - [x] Internal commands 
 - [x] Commands history
-- [ ] Special characters
-- [ ] Piping
-- [ ] Redirections
-- [ ] Signals
-- [ ] command structuring
+- [x] Special characters
+- [x] Piping
+- [x] Redirections
+- [x] Signals
+- [x] command structuring
 - [x] `for` loop
-- [ ] `if else` conditional branching
+- [x] `if else` conditional branching
 ### Shortcuts
 - [x] UP and DOWN arrows (seeking command history)
 - [x] LEFT and RIGHT arrows (moving the current prompt cursor)
