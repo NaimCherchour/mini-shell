@@ -141,11 +141,6 @@ void free_commands(char*** commands) {
 
 //Des méthodes pour factoriser le code 
 
-// Gérer les signaux
-void ignore_signals() {
-    signal(SIGINT, SIG_IGN); // Ignorer Ctrl+C
-    signal(SIGTERM, SIG_IGN); // Ignorer SIGTERM
-}
 
 // Sauvegarder les descripteurs d'origine
 int save_file_descriptors(int* saved_fds) {
@@ -243,7 +238,6 @@ int execute_external_command(char** command) {
 int execute_command(char** command) {
 
     // On Ignore les signaux : SIGINT (Ctrl+C) et SIGTERM
-    ignore_signals();
 
     // On Initialise un tableau de redirections
     //TODO : ne pas restreindre le nombre de redirections
