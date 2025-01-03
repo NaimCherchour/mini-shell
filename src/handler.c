@@ -15,6 +15,7 @@
 #include "../headers/internals.h" // pour les commandes internes
 #include "../headers/utils.h" // pour for_loop 
 #include "../headers/redirections.h" // pour les redirections
+#include "../headers/signal_handler.h" // pour les signaux
 
 #define MAX_COMMANDS 5
 #define MAX_ARGS 10
@@ -141,11 +142,6 @@ void free_commands(char*** commands) {
 
 //Des méthodes pour factoriser le code 
 
-// Gérer les signaux
-void ignore_signals() {
-    signal(SIGINT, SIG_IGN); // Ignorer Ctrl+C
-    signal(SIGTERM, SIG_IGN); // Ignorer SIGTERM
-}
 
 // Sauvegarder les descripteurs d'origine
 int save_file_descriptors(int* saved_fds) {
@@ -197,8 +193,7 @@ int execute_external_command(char** command) {
     pid_t pid = fork();
     if (pid == 0) { // Enfant
         // Réinitialiser les signaux
-        signal(SIGINT, SIG_DFL);
-        signal(SIGTERM, SIG_DFL);
+        reset_signals_in_child();
 
         // Créer le chemin d'accès à la commande
         char* bin_path = "bin/";
@@ -230,6 +225,9 @@ int execute_external_command(char** command) {
         if (WIFEXITED(wstatus)) {
             return WEXITSTATUS(wstatus);
         } else if (WIFSIGNALED(wstatus)) {
+            if (WTERMSIG(wstatus) == SIGINT) {
+                sigint_received = 1;
+            }
             return -WIFSIGNALED(wstatus);
         }
     } else {
@@ -243,7 +241,6 @@ int execute_external_command(char** command) {
 int execute_command(char** command) {
 
     // On Ignore les signaux : SIGINT (Ctrl+C) et SIGTERM
-    ignore_signals();
 
     // On Initialise un tableau de redirections
     //TODO : ne pas restreindre le nombre de redirections
@@ -293,6 +290,7 @@ int execute_command(char** command) {
 // Exécute les commandes une par une ( pour les séquences de commandes , séparées par des ;)
 // et le if_else , for et les commandes avec des pipes
 int handle_commands(char*** commands) {
+    sigint_received = 0; // Réinitialiser le flag SIGINT
     int status = 0;
     int i = 0;
 
@@ -321,7 +319,10 @@ int handle_commands(char*** commands) {
             // Commande simple
             status = execute_command(cmd);
         }
-
+        if (sigint_received){
+            // On a reçu un signal SIGINT
+            return -1 ; // -1 pour signaler l'interruption et afficher [SIG] dans le prompt
+        }
         i++;
     }
     return status;
