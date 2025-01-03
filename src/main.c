@@ -17,9 +17,14 @@
 #include "prompt.h"
 #include "utils.h"
 #include "handler.h"
+#include "signal_handler.h"
 
 
 int main() {
+    
+    // Configuration des gestionnaires de signaux dans fsh
+    setup_signal_handlers();
+
     // clear the screen
     write(STDOUT_FILENO, "\033[H\033[J", 6);
 
@@ -46,9 +51,7 @@ int main() {
 
     write(STDOUT_FILENO, "\n", 1);
 
-    // Configuration des gestionnaires de signaux pour le shell principal
-
-
+    
     // Boucle principale pour lire les commandes utilisateur
     while (1) {
         // Générer le prompt
@@ -72,7 +75,7 @@ int main() {
             char** command = parse_input(line); // parser la commande
             char*** commands = cutout_commands(command); // découper les commandes
             
-            last_status = handle_commands(commands); // exécuter les commandes une par une
+            last_status = handle_commands(commands); // exécuter les commandes une par une 
 
             //libérer la mémoire allouée pour les commandes
             for (int i = 0; command[i] != NULL; i++) {

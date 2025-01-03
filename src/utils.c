@@ -16,6 +16,7 @@
 #include "../headers/utils.h"
 #include "../headers/handler.h" // pour handle_commands
 #include "../headers/prompt.h" // pour last_status
+#include "../headers/signal_handler.h" // pour sigint_received
 
 // Macros
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -164,6 +165,11 @@ int browse_directory(const char *directory, char *cmd_str, int hidden, int recur
 
         // Exécuter les commandes remplacées
         int result = execute_block(replaced_cmd);
+        if(result == -1){
+            // On a reçu un signal SIGINT pour une commande à l'intérieur du bloc
+            // On arrête tous le parcours
+            return -1;
+        }
         return_val = MAX(return_val, result);
         free(replaced_cmd);
     }
@@ -221,7 +227,7 @@ char* replace_var_with_path(const char* str, const char* var, const char* replac
     return result;
 }
 
-int constructor(char **command, char *var, char **directory, int *hidden, int *recursive, int *extension, char **EXT, int *type, char *TYPE, char **cmd_str) {
+int constructor(char **command, char *var, char **directory, int *hidden, int *recursive, int *extension, char **EXT, int *type, char *TYPE, char **cmd_str ) {
     // Extraction de la variable et du répertoire
     *var = command[1][0];
     *directory = command[3];
@@ -313,6 +319,11 @@ int constructor(char **command, char *var, char **directory, int *hidden, int *r
 
 // Méthode interne 
 int execute_block(char* block_command) {
+    // On vérifie si SIGINT a été reçu avant l'exécution
+    if (sigint_received){
+        sigint_received = 0;
+        return -1;
+    }
     // On analyse la chaîne avec parse_input
     char **tokens = parse_input(block_command);
     // On divise les tokens en commandes avec split_commands
