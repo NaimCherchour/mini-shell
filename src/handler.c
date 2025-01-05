@@ -13,12 +13,11 @@
 #include "../headers/handler.h"
 #include "../headers/prompt.h" // pour utiliser la variable last_status ie valeur de retour 
 #include "../headers/internals.h" // pour les commandes internes
-#include "../headers/utils.h" // pour for_loop 
+#include "../headers/utils.h" // pour for_loop / if_else
 #include "../headers/redirections.h" // pour les redirections
 #include "../headers/signal_handler.h" // pour les signaux
 
-#define MAX_COMMANDS 5
-#define MAX_ARGS 10
+#define MAX_COMMANDS 10
 #define INITIAL_SIZE 15
 
 
@@ -127,21 +126,7 @@ char*** cutout_commands(char** args) {
     return commands;
 }
 
-void free_commands(char*** commands) {
-    if (commands == NULL) {
-        return; // Nothing to free
-    }
-    for (int i = 0; i < MAX_COMMANDS; i++) {
-        if ( commands[i] != NULL ){
-                free(commands[i]);
-        }
-    }
-    free(commands);
-}
-
-
 //Des méthodes pour factoriser le code 
-
 
 // Sauvegarder les descripteurs d'origine
 int save_file_descriptors(int* saved_fds) {
@@ -239,8 +224,6 @@ int execute_external_command(char** command) {
 
 // executes one simple command
 int execute_command(char** command) {
-
-    // On Ignore les signaux : SIGINT (Ctrl+C) et SIGTERM
 
     // On Initialise un tableau de redirections
     //TODO : ne pas restreindre le nombre de redirections

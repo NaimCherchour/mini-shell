@@ -7,7 +7,7 @@
 // headers
 #include "prompt.h" 
 
-int last_status = 0; // Variable contenant la dernière valeur de retour ou 255
+int last_status = 0; // Variable contenant la dernière valeur de retour entre 0 et 255
 
 char *generate_prompt() {
     char status_color[16];
@@ -17,7 +17,7 @@ char *generate_prompt() {
     char *prompt;
 
 
-    if (last_status < 0) {
+    if (last_status < 0) { // Pour détecter les signaux on utilise une valeur de retour négative
         snprintf(status_text, sizeof(status_text), "SIG");
         strncpy(status_color, COLOR_RED, sizeof(status_color));
     } else {

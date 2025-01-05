@@ -109,7 +109,6 @@ int pwd(char **args) {
 
     char cwd[PATH_MAX];
 
-    // Vérifier le nombre d'arguments dans execute_command
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
         char buffer[PATH_MAX+1];
         snprintf(buffer, sizeof(buffer), "%s\n", cwd);

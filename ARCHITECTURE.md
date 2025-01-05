@@ -12,6 +12,7 @@
 ┃   ┃ ┣ internals.h
 ┃   ┃ ┣ handler.h
 ┃   ┃ ┣ utils.h 
+┃   ┃ ┣ signal_handler.h 
 ┃   ┃ ┗ redirections.h
 ┣ 📂src/ ------------------------------------> Contient les sources   
 ┃ ┣ 📂locals/  ----------------------------> Contient les sources des commandes locales  
@@ -24,6 +25,7 @@
 ┃ ┣ internals.c ---------------------------> source des commandes internes
 ┃ ┣ utils.c -------------------------------> source des commandes structurées ( for ... )
 ┃ ┣ main.c --------------------------------> source du fsh  ( méthode principale )
+┃ ┣ signal_handler.c -----------------------> source pour la gestion des signaux 
 ┃ ┗ redirections.c ------------------------> code source des redirections
 ┣ ARCHITECTURE.md  
 ┣ AUTHORS.md   
@@ -68,11 +70,15 @@
    Contient les fonctions internes du shell (cd, ftype, pwd, exit).
   5. <b>utils</b>:
    Gère les boucles for sans options et implémente une méthode pour vérifier la syntaxe de for.
-   6. <b>redirections</b> :
+  6. <b>redirections</b> :
       gère des redirections avec `detect_redirections` qui identifie les      
    redirections (<, >, >>, etc), `apply_redirection` qui applique une 
    redirection en modifiant les descripteurs et `save_fds` / `restore_fds` qui 
    sauvegarde/restaure des descripteurs standards (stdin, stdout, stderr)
+   7. <b>signal_handler</b> :
+   Gère les signaux SIGINT et SIGTERM en utilisant `sigaction` pour définir des handlers personnalisés
+
+
 
 * ### Structures de données :
 
@@ -104,6 +110,9 @@
    - `Redirection` (struct) qui représente une redirection spécifique avec les champs : 
       - `type` ( RedirectionType ) : Type de redirection à appliquer.
 	   - `file` (char*)  :Nom du fichier cible pour la redirection.
+
+   7. <b>signal_handler </b> :
+   - Utilsation du type `struct sigaction` pour définir des handlers de signaux personnalisés
 
 
 

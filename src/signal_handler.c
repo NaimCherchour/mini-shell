@@ -2,9 +2,11 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-#include "handler.h"  
 
-// la var global : flag si SIGINT a été reçu
+
+#include "signal_handler.h"
+
+// la var global  : flag si SIGINT a été reçu
  sig_atomic_t sigint_received = 0;
 
 

@@ -12,9 +12,6 @@
 #define COLOR_BLUE "\001\033[34m\002"  // Bleu: chemin courant
 #define COLOR_RESET "\001\033[00m\002" // Retour à la normale
 
-// Valeur spéciale pour interruption par signal définie dans prompt.c
-#define STATUS_SIGNAL 255
-
 // Variable globale pour stocker la dernière valeur de retour et initialisée à 0 
 extern int last_status;
 
@@ -27,7 +24,7 @@ extern int last_status;
  * - Le symbole `$` suivi d'un espace
  *
  * @return une chaîne de caractères allouée dynamiquement contenant le prompt
- *         On libérer la mémoire après utilisation
+ *         On libère la mémoire après utilisation
  */
 char *generate_prompt();
 

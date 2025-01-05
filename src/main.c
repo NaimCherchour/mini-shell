@@ -72,8 +72,8 @@ int main() {
 
         if (strlen(line) > 0) {
             add_history(line); // On ajoute la commande à l'historique
-            char** command = parse_input(line); // parser la commande
-            char*** commands = cutout_commands(command); // découper les commandes
+            char** command = parse_input(line); // parser la commande c'est à dire découper la commande en tokens
+            char*** commands = cutout_commands(command); // découper les commandes en tableau de commandes
             
             last_status = handle_commands(commands); // exécuter les commandes une par une 
 
