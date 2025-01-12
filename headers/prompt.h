@@ -7,10 +7,11 @@
  /* \001 et \002 indiquent à readline de ne pas considérer les caractères non imprimables 
     dans le calcul de la longueur de l'affichage */
 
-#define COLOR_GREEN "\001\033[32m\002" // Vert: succès
-#define COLOR_RED "\001\033[91m\002"   // Rouge: échec 
-#define COLOR_BLUE "\001\033[34m\002"  // Bleu: chemin courant
-#define COLOR_RESET "\001\033[00m\002" // Retour à la normale
+#define PROMPT_COLOR_RED "\001\033[91m\002"
+#define PROMPT_COLOR_GREEN "\001\033[32m\002"
+#define PROMPT_COLOR_BLUE "\001\033[34m\002"
+#define PROMPT_COLOR_RESET "\001\033[00m\002"
+
 
 // Variable globale pour stocker la dernière valeur de retour et initialisée à 0 
 extern int last_status;
