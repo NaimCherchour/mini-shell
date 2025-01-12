@@ -27,6 +27,7 @@ int cd (char **args) {
 
     char *rep_destinataire;
     char rep_courant[PATH_MAX];
+    (void)args;  // Suppression de warning si args non utilisé
 
     int argc = nb_arguments(args); // calculer le nombre d'arguments 
 
