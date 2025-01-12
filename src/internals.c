@@ -65,7 +65,11 @@ int cd (char **args) {
     }
 
     // Mise à jour du répertoire précédent
-    strncpy(rep_precedent, rep_courant, sizeof(rep_precedent));
+    if (strncpy(rep_precedent, rep_courant, sizeof(rep_precedent)) == NULL) {
+    perror("strncpy");
+    return 1;
+    }
+
 
     return 0;
 }
