@@ -63,24 +63,25 @@
 	•	Les redirections sont appliquées en modifiant les descripteurs cibles.
 	•	Après exécution, les descripteurs sont restaurés à leur état d’origine.
 
-* ### Fichiers source :
-  1. <b>main</b> :
-      contient la méthode principale main() qui initialise le shell et appelle la génération du prompt, lecture de la commande et puis on appelle la méthode pour l'exécution de la commande .
-  2. <b>prompt</b> :
-   Définit la génération du prompt dynamique en incluant la gestion de couleurs, affichage de last_status et du répertoire courant avec raccourcissement.
-  3. <b>handler</b> :
-   Implémente le parsing des commandes (parse_command + cutout_commands), l’exécution des commandes internes comme cd, ftype, pwd, exit, et le contrôle des processus pour les commandes externes avec gestion des signaux (handle_commands et execute_command)
-  4. <b>internals</b> :
-   Contient les fonctions internes du shell (cd, ftype, pwd, exit).
-  5. <b>utils</b>:
-   Gère les boucles for sans options et implémente une méthode pour vérifier la syntaxe de for.
-  6. <b>redirections</b> :
-      gère des redirections avec `detect_redirections` qui identifie les      
-   redirections (<, >, >>, etc), `apply_redirection` qui applique une 
-   redirection en modifiant les descripteurs et `save_fds` / `restore_fds` qui 
-   sauvegarde/restaure des descripteurs standards (stdin, stdout, stderr)
-   7. <b>signal_handler</b> :
-   Gère les signaux SIGINT et SIGTERM en utilisant `sigaction` pour définir des handlers personnalisés
+*### Fichiers source :
+  1. **main** :
+      Contient la méthode principale `main()` qui initialise le shell, appelle la génération du prompt, lit la commande entrée par l'utilisateur et délègue l'exécution des commandes.
+  2. **prompt** :
+      Définit la génération du prompt dynamique, incluant la gestion des couleurs, l'affichage du `last_status` et du répertoire courant avec un raccourcissement lorsque nécessaire.
+  3. **handler** :
+      Implémente le parsing des commandes avec `parse_command` et `cutout_commands`. Gère l'exécution des commandes internes (`cd`, `ftype`, `pwd`, `exit`) et le contrôle des processus pour les commandes externes, incluant la gestion des signaux (`handle_commands` et `execute_command`).
+  4. **internals** :
+      Contient les fonctions internes du shell : `cd`, `ftype`, `pwd` et `exit`.
+  5. **utils** :
+      Gère les boucles `for` (sans options) et inclut une méthode `for_syntaxe` pour valider la syntaxe.
+  6. **redirections** :
+      Implémente la gestion des redirections :
+      - `detect_redirections` : Identifie les redirections (`<`, `>`, `>>`, `2>`).
+      - `apply_redirection` : Applique les redirections en modifiant les descripteurs de fichiers.
+      - `save_fds` / `restore_fds` : Sauvegarde et restaure les descripteurs standards (`stdin`, `stdout`, `stderr`).
+  7. **signal_handler** :
+      Gère les signaux (`SIGINT` et `SIGTERM`) en utilisant `sigaction` pour définir des handlers personnalisés.
+
 
 
 
