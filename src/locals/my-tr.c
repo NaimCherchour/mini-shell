@@ -9,7 +9,6 @@
 
 #define BUFFER_SIZE 512  // Réduction de la taille pour optimiser la mémoire
 
-
 char usage[] = " prend deux paramètres\n";
 
 int do_tr(int del_char, char car1, char car2);
