@@ -87,11 +87,15 @@ int browse_directory(const char *directory, char *cmd_str, int hidden, int recur
     DIR *dp;
     struct dirent *entry;
 
-    dp = opendir(directory);
-    if (dp == NULL) {
+    int open_directory(const char *directory, DIR **dp) {
+    *dp = opendir(directory);
+    if (*dp == NULL) {
         perror("opendir");
         return 1;
     }
+    return 0;
+}
+
 
     if (parallel == 1) {
         pid_t id;
