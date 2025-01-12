@@ -396,6 +396,7 @@ int handle_pipes(char *line) {
             perror("pipe");
             return 1;
         }
+        close(pipefds[2 * i + 1]);  // Fermeture après usage
     }
 
     pid_t pids[num_commands]; // PIDs des processus enfants
