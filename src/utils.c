@@ -11,12 +11,14 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <sys/wait.h>
 
 
 #include "../headers/utils.h"
 #include "../headers/handler.h" // pour handle_commands
 #include "../headers/prompt.h" // pour last_status
 #include "../headers/signal_handler.h" // pour sigint_received
+#include <fcntl.h>
 
 // Macros
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -75,23 +77,154 @@ int for_syntaxe(char **command) {
     * depth : la profondeur actuelle de récursion
     * return : la valeur de retour maximale
  */
-int browse_directory(const char *directory, char *cmd_str, int hidden, int recursive, int extension, char *EXT, int type, char TYPE, char var, int return_val, int depth) {
-    // Limiter la profondeur de récursion
+int browse_directory(const char *directory, char *cmd_str, int hidden, int recursive, int extension, char *EXT, int type, char TYPE, int parallel, int MAX_PROCESSES, char var, int return_val, int depth) {
+    // Limit recursion depth
     if (depth > MAX_DEPTH) {
-        write(STDERR_FILENO, "browse_directory: Profondeur de récursion trop élevée.\n", 56);
+        write(STDERR_FILENO, "browse_directory: Recursion depth too high.\n", 45);
         return 1;
     }
 
     DIR *dp;
     struct dirent *entry;
 
-    dp = opendir(directory);
-    if (dp == NULL) {
+    int open_directory(const char *directory, DIR **dp) {
+    *dp = opendir(directory);
+    if (*dp == NULL) {
         perror("opendir");
         return 1;
     }
+    return 0;
+}
 
-    while ((entry = readdir(dp)) != NULL) {
+
+    if (parallel == 1) {
+        pid_t id;
+        int active_processes = 0;
+        int entries_processed = 0;
+
+        while ((entry = readdir(dp)) != NULL) {
+            // Skip "." and ".."
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                continue;
+
+            // Handle hidden files
+            if (!hidden && entry->d_name[0] == '.')
+                continue;
+
+            // Wait if max processes are running
+            if (active_processes >= MAX_PROCESSES) {
+                int status;
+                wait(&status);
+                active_processes--;
+
+                if (WIFEXITED(status)) {
+                    return_val = MAX(return_val, WEXITSTATUS(status));
+                } else {
+                    return_val = 1; // Error occurred
+                }
+            }
+
+            // Fork a child process to handle this entry
+            id = fork();
+            if (id == -1) {
+                perror("fork");
+                return_val = 1;
+                continue;
+            }
+
+            if (id == 0) {
+                // Child process
+
+                // Build the full path
+                char full_path[PATH_MAX];
+                snprintf(full_path, sizeof(full_path), "%s/%s", directory, entry->d_name);
+
+                // Get file info
+                struct stat file_stat;
+                if (lstat(full_path, &file_stat) == -1) {
+                    perror("lstat");
+                    exit(1);
+                }
+
+                // Recurse into subdirectories if needed
+                if (recursive && S_ISDIR(file_stat.st_mode)) {
+                    exit(browse_directory(full_path, cmd_str, hidden, recursive, extension, EXT, type, TYPE, parallel, MAX_PROCESSES, var, return_val, depth + 1));
+                }
+
+                // Check file type if needed
+                if (type) {
+                    if ((TYPE == 'f' && !S_ISREG(file_stat.st_mode)) ||
+                        (TYPE == 'd' && !S_ISDIR(file_stat.st_mode)) ||
+                        (TYPE == 'l' && !S_ISLNK(file_stat.st_mode)) ||
+                        (TYPE == 'p' && !S_ISFIFO(file_stat.st_mode))) {
+                        exit(0); // Skip unsupported types
+                    }
+                }
+
+                // Handle file extension if required
+                char *var_value;
+                if (extension) {
+                    char *dot = strrchr(entry->d_name, '.');
+                    if (!dot || strcmp(dot + 1, EXT) != 0) {
+                        exit(0);
+                    }
+                    size_t name_len = dot - entry->d_name;
+                    size_t dir_len = strlen(directory);
+                    var_value = malloc(dir_len + 1 + name_len + 1);
+                    if (!var_value) {
+                        perror("malloc");
+                        exit(1);
+                    }
+                    snprintf(var_value, dir_len + 1 + name_len + 1, "%s/%.*s", directory, (int)name_len, entry->d_name);
+                } else {
+                    var_value = strdup(full_path);
+                    if (!var_value) {
+                        perror("strdup");
+                        exit(1);
+                    }
+                }
+
+                // Replace the variable with the appropriate value
+                char var_str[3] = {'$', var, '\0'};
+                char *replaced_cmd = replace_var_with_path(cmd_str, var_str, var_value);
+                free(var_value);
+                if (!replaced_cmd) {
+                    write(STDERR_FILENO, "Error replacing variable.\n", 26);
+                    exit(1);
+                }
+
+                // Execute the block
+                int result = execute_block(replaced_cmd);
+                free(replaced_cmd);
+                exit(result);
+            } else {
+                // Parent process
+                active_processes++;
+                entries_processed++;
+            }
+        }
+
+        // Wait for remaining child processes
+        while (active_processes > 0) {
+            int status;
+            wait(&status);
+            active_processes--;
+
+            if (WIFEXITED(status)) {
+                return_val = MAX(return_val, WEXITSTATUS(status));
+            } else {
+                return_val = 1;
+            }
+        }
+
+        if (closedir(dp) == -1) {
+            perror("closedir");
+            return 1;
+        }
+
+        return return_val;
+    } else {
+            while ((entry = readdir(dp)) != NULL) {
         // Ignorer '.' et '..'
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
             continue;
@@ -113,7 +246,7 @@ int browse_directory(const char *directory, char *cmd_str, int hidden, int recur
 
         // Parcours récursif des sous-répertoires
         if (recursive && S_ISDIR(file_stat.st_mode)) {
-            int sub_return_val = browse_directory(full_path, cmd_str, hidden, recursive, extension, EXT, type, TYPE, var, return_val, depth + 1);
+            int sub_return_val = browse_directory(full_path, cmd_str, hidden, recursive, extension, EXT, type, TYPE, parallel, MAX_PROCESSES, var, return_val, depth + 1);
             return_val = MAX(return_val, sub_return_val);
         }
 
@@ -163,15 +296,17 @@ int browse_directory(const char *directory, char *cmd_str, int hidden, int recur
             continue;
         }
 
-        // Exécuter les commandes remplacées
+    
+        // Sequential execution
         int result = execute_block(replaced_cmd);
-        if(result == -1){
-            // On a reçu un signal SIGINT pour une commande à l'intérieur du bloc
-            // On arrête tous le parcours
+        if (result == -1) {
+            // Received SIGINT during command execution
             return -1;
         }
         return_val = MAX(return_val, result);
         free(replaced_cmd);
+        
+            
     }
 
     if (closedir(dp) == -1) {
@@ -179,7 +314,10 @@ int browse_directory(const char *directory, char *cmd_str, int hidden, int recur
         return 1;
     }
     return return_val;
+
+    }
 }
+
 
 char* replace_var_with_path(const char* str, const char* var, const char* replacement) {
     char* result;
@@ -227,7 +365,7 @@ char* replace_var_with_path(const char* str, const char* var, const char* replac
     return result;
 }
 
-int constructor(char **command, char *var, char **directory, int *hidden, int *recursive, int *extension, char **EXT, int *type, char *TYPE, char **cmd_str ) {
+int constructor(char **command, char *var, char **directory, int *hidden, int *recursive, int *extension, char **EXT, int *type, char *TYPE, int *parallel, int *MAX_PROCESSES, char **cmd_str ) {
     // Extraction de la variable et du répertoire
     *var = command[1][0];
     *directory = command[3];
@@ -255,6 +393,15 @@ int constructor(char **command, char *var, char **directory, int *hidden, int *r
                 i++;
             } else {
                 write(STDERR_FILENO, "Erreur : option '-t' nécessite un argument d'un caractère.\n", 62);
+                return 1;
+            }
+        } else if(strcmp(command[i], "-p") == 0){
+            if (command[i+1] != NULL && atoi(command[i+1]) > 0) {
+                *parallel = 1;
+                *MAX_PROCESSES = atoi(command[i+1]);
+                i++;
+            } else {
+                write(STDERR_FILENO, "Erreur : option -p nécessite un argument d'un entier positif.\n", 62);
                 return 1;
             }
         } else {
@@ -314,6 +461,7 @@ int constructor(char **command, char *var, char **directory, int *hidden, int *r
 
     return 0;
 }
+
 
 
 
@@ -385,21 +533,21 @@ int for_loop(char **command) {
     // Étape 2 : Extraction de la variable, le répertoire et les options à l'aide de 'constructor'
     char var;
     char *directory;
-    int hidden = 0, recursive = 0, extension = 0, type = 0;
+    int hidden = 0, recursive = 0, extension = 0, type = 0, parallel = 0;
     char *EXT = NULL;
     char TYPE = '\0';
+    int MAX_PROCESSES = 0;
     char *cmd_str = NULL;
 
-    int constructor_result = constructor(command, &var, &directory, &hidden, &recursive, &extension, &EXT, &type, &TYPE, &cmd_str);
+    int constructor_result = constructor(command, &var, &directory, &hidden, &recursive, &extension, &EXT, &type, &TYPE, &parallel, &MAX_PROCESSES, &cmd_str);
     if (constructor_result != 0) {
         return constructor_result;
     }
 
-    
 
     // Étape 3 : Parcour du répertoire en utilisant 'browse_directory'
     int return_val = 0;
-    return_val = browse_directory(directory, cmd_str, hidden, recursive, extension, EXT, type, TYPE, var, return_val, 0);
+    return_val = browse_directory(directory, cmd_str, hidden, recursive, extension, EXT, type, TYPE, parallel, MAX_PROCESSES, var, return_val, 0);
 
     // Libération de la mémoire allouée
     free(cmd_str);
@@ -407,8 +555,8 @@ int for_loop(char **command) {
 }
 
 // Vérifie si la condition 'TEST' est un pipeline valide
-bool is_valid_test_condition(char **test_cmd_tokens, int token_count) {
-    if (strcmp(test_cmd_tokens[0], "if") == 0 || strcmp(test_cmd_tokens[0], "for") == 0)   {
+bool is_valid_test_condition(char **test_cmd_token, int start_index) {
+    if (strcmp(test_cmd_token[start_index], "if") == 0 || strcmp(test_cmd_token[start_index], "for") == 0)   {
         return false;
     } else {
         return true;
@@ -450,27 +598,32 @@ int if_else(char** command) {
     }
 
     // Extraction des tokens de la condition
-    int test_token_count = test_end - test_start + 1; //Nombre de tokens dans la condition
-    char **test_cmd = malloc((test_token_count + 1) * sizeof(char *));
+    //int test_token_count = test_end - test_start + 1;
+
+    int total_length = 0;
+    for (int j = test_start; j <= test_end; j++) {
+        total_length += strlen(command[j]) + 1;
+    }   
+    char *test_cmd = malloc(total_length * sizeof(char));
     if (!test_cmd) {
         perror("malloc");
         exit(EXIT_FAILURE);
     }
-    for (int j = test_start, k = 0; j <= test_end; j++, k++) {
-        test_cmd[k] = strdup(command[j]);
+
+    test_cmd[0] = '\0';
+    for (int j = test_start; j <= test_end; j++) {
+        strcat(test_cmd, command[j]);
+        if (j < test_end) {
+            strcat(test_cmd, " ");
+        }
     }
-    test_cmd[test_token_count] = NULL;
 
     //si TEST est une commande structurée
-    if (!is_valid_test_condition(test_cmd, test_token_count)) {
+    if (!is_valid_test_condition(command,test_start)) {
         write(STDERR_FILENO, "Fonctionnalité non gérée: 'TEST' ne peut pas contenir de commandes structurées\n", 83);
-        // Libération de la mémoire
-        for (int k = 0; k < test_token_count; k++) {
-            free(test_cmd[k]);
-        }
         free(test_cmd);
         return 2;
-    }
+    } 
 
     i++; // Passer '{'
     int cmd_start = i;
@@ -492,9 +645,6 @@ int if_else(char** command) {
     if (brace_count != 0) {
         write(STDERR_FILENO, "Erreur de syntaxe : accolades manquantes ou mal placées dans le bloc 'if'.\n", 76);
         // Libération de la mémoire
-        for (int k = 0; test_cmd[k] != NULL; k++) {
-            free(test_cmd[k]);
-        }
         free(test_cmd);
         return 2;
     }
@@ -516,9 +666,6 @@ int if_else(char** command) {
         if (command[i] == NULL || strcmp(command[i], "{") != 0) {
             write(STDERR_FILENO, "Erreur de syntaxe : '{' manquant après 'else'.\n", 48);
             free(cmd_if_str);
-            for (int k = 0; test_cmd[k] != NULL; k++) {
-                free(test_cmd[k]);
-            }
             free(test_cmd);
             return 2;
         }
@@ -543,9 +690,6 @@ int if_else(char** command) {
         if (brace_count != 0) {
             write(STDERR_FILENO, "Erreur de syntaxe : accolades manquantes ou mal placées dans le bloc 'else'.\n", 75);
             free(cmd_if_str);
-            for (int k = 0; test_cmd[k] != NULL; k++) {
-                free(test_cmd[k]);
-            }
             free(test_cmd);
             return 2;
         }
@@ -566,22 +710,16 @@ int if_else(char** command) {
         if (has_else) {
             free(cmd_else_str);
         }
-        for (int k = 0; test_cmd[k] != NULL; k++) {
-            free(test_cmd[k]);
-        }
         free(test_cmd);
         return 2;
     }
 
-    // Exécution de la commande de test sans afficher la sortie
-    int test_result = execute_command(test_cmd);
+    // Exécution de la commande de test
+    int test_result = execute_block(test_cmd);
 
     //Si execute_command retourne une erreur de syntaxe
     if (test_result == 2) {
         // Libération de la mémoire
-        for (int k = 0; test_cmd[k] != NULL; k++) {
-            free(test_cmd[k]);
-            }
         free(test_cmd);
         free(cmd_if_str);
         if (has_else) {
@@ -591,9 +729,6 @@ int if_else(char** command) {
     }
 
     // Libération de la mémoire des tokens de test
-    for (int k = 0; test_cmd[k] != NULL; k++) {
-        free(test_cmd[k]);
-    }
     free(test_cmd);
 
     int return_val = 0;

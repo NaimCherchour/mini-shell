@@ -159,6 +159,7 @@ bool apply_redirection(Redirection redir) {
         close(fd);
         return false;
     }
+    close(fd);
 
     // On ferme le descripteur ouvert car il est maintenant redirigé
     close(fd);

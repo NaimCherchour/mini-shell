@@ -64,7 +64,11 @@ char** parse_input(char* line) {
     return args;
 }
 
-// cutout_commands découpe les commandes séparées par des ;
+/**
+ * Découpe les commandes successives séparées par le caractère `;`.
+ * Chaque commande est stockée dans un tableau de chaînes de caractères.
+ * Utilisé pour exécuter des commandes multiples.
+ */
 char*** cutout_commands(char** args) {
     int size = INITIAL_SIZE;
     // Allocate memory for the commands 2D array
@@ -377,7 +381,12 @@ int handle_pipes(char *line) {
         char *end = token + strlen(token) - 1;
         while (end > token && *end == ' ') *end-- = '\0'; // Supprimer les espaces à la fin
         commands[num_commands++] = strdup(token);
+        if (commands[num_commands - 1] == NULL) {
+            perror("strdup");
+            exit(EXIT_FAILURE);
+        }
         token = strtok(NULL, "|");
+
     }
     commands[num_commands] = NULL; // Terminaison
 
@@ -387,6 +396,7 @@ int handle_pipes(char *line) {
             perror("pipe");
             return 1;
         }
+        close(pipefds[2 * i + 1]);  // Fermeture après usage
     }
 
     pid_t pids[num_commands]; // PIDs des processus enfants
@@ -432,6 +442,13 @@ int handle_pipes(char *line) {
     // Libérer la mémoire
     for (int i = 0; i < num_commands; i++) {
         free(commands[i]);
+    }
+
+    // On Normalise le statut de retour
+    if (WIFEXITED(status)) {
+        status = WEXITSTATUS(status);
+    } else if (WIFSIGNALED(status)) {
+        status = 128 + WTERMSIG(status);
     }
 
     return status;
