@@ -34,9 +34,10 @@ int main(int argc, char * argv[]) {
   int opt;
   if ((opt = getopt(argc, argv, "d")) != -1) {
     /* TODO: gérer l'option -d */
-    if (opt == 'd') {
-      del_char = 1;
-      car1 = argv[2][0];
+  if ((opt = getopt(argc, argv, "d")) != -1) {
+    if (strncmp(argv[1], "-d", 2) == 0) {
+        del_char = 1;
+        car1 = argv[2][0];
     }
     else {
       result = 1;
