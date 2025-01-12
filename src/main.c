@@ -11,7 +11,6 @@
 #include <assert.h>
 #include <linux/limits.h> // Pour #define PATH_MAX 4096
 #include <signal.h>
-#include <sys/resource.h>
 
 // headers
 #include "internals.h"
@@ -19,7 +18,6 @@
 #include "utils.h"
 #include "handler.h"
 #include "signal_handler.h"
-
 
 
 int main() {
@@ -67,12 +65,10 @@ int main() {
         char* line = readline(prompt); // line contient la commande entrée par l'utilisateur
         free(prompt); // On libère la mémoire allouée pour le prompt
 
-        
         if (line == NULL) {
-            fprintf(stderr, "Erreur : entrée utilisateur invalide ou EOF détecté.\n");
-            exit_shell(NULL);
+            // Si line est NULL (EOF ou erreur), On quitte la boucle
+            exit_shell(NULL);  // exit avec last_status 
         }
-
 
         if (strlen(line) > 0) {
             add_history(line); // On ajoute la commande à l'historique
@@ -101,10 +97,4 @@ int main() {
     }
 
     return EXIT_SUCCESS;
-}
-
-void print_memory_usage() {
-    struct rusage usage;
-    getrusage(RUSAGE_SELF, &usage);
-    printf("Mémoire utilisée : %ld KB\n", usage.ru_maxrss);
 }

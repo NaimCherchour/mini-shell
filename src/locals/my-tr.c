@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 
-#define BUFFER_SIZE 512  // Réduction de la taille pour optimiser la mémoire
+#define BUFFER_SIZE 1024
 
 char usage[] = " prend deux paramètres\n";
 
@@ -63,17 +63,15 @@ int do_tr(int del_char, char car1, char car2) {
 
   /* TODO: allouer les buffers de lecture et d'écriture */
   buf_in = (char *)malloc(BUFFER_SIZE);
-if (!buf_in) {
-    perror("malloc");
-    return 1;
-}
-buf_out = (char *)malloc(BUFFER_SIZE);
-if (!buf_out) {
-    perror("malloc");
-    free(buf_in);
-    return 1;
-}
-
+  if (!buf_in) {
+    result = 1;
+    goto cleanup_return;
+  }
+  buf_out = (char *)malloc(BUFFER_SIZE);
+  if (!buf_out) {
+    result = 1;
+    goto cleanup_return;
+  }
   
   while(1) {
     /* TODO: lire l'entrée (tant qu'il y a quelque chose à lire) */

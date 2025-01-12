@@ -28,10 +28,9 @@ char *generate_prompt() {
     // Répertoire courant
     char path[PATH_MAX];
     if (getcwd(path, sizeof(path)) == NULL) {
-    fprintf(stderr, "Erreur : impossible de récupérer le répertoire courant\n");
-    exit(EXIT_FAILURE);
+        perror("getcwd");
+        exit(EXIT_FAILURE);
     }
-
 
     // Raccourcir le chemin avec ~ si HOME est préfixe ( AJOUT )
     char *home = getenv("HOME");

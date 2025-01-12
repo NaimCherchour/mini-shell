@@ -32,11 +32,6 @@ make clean
 
 ---
 
-## Gestion des erreurs
-- Le shell affiche des messages d'erreur clairs lors de l'exécution de commandes invalides ou en cas de problème de mémoire.
-- La gestion des signaux est implémentée pour ignorer `SIGINT` et `SIGTERM`.
-- Les commandes locales (`my-sed`, `my-tr`, `my-wc`) gèrent les erreurs de manière explicite (options invalides, fichiers inexistants).
-
 ## Features
 
 - [x] External commands
