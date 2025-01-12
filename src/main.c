@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <linux/limits.h> // Pour #define PATH_MAX 4096
 #include <signal.h>
+#include <sys/resource.h>
 
 // headers
 #include "internals.h"
@@ -18,6 +19,7 @@
 #include "utils.h"
 #include "handler.h"
 #include "signal_handler.h"
+
 
 
 int main() {
@@ -99,4 +101,10 @@ int main() {
     }
 
     return EXIT_SUCCESS;
+}
+
+void print_memory_usage() {
+    struct rusage usage;
+    getrusage(RUSAGE_SELF, &usage);
+    printf("Mémoire utilisée : %ld KB\n", usage.ru_maxrss);
 }
