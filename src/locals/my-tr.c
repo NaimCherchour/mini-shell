@@ -7,7 +7,8 @@
 
 #include <stdio.h>
 
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 512  // Réduction de la taille pour optimiser la mémoire
+
 
 char usage[] = " prend deux paramètres\n";
 
