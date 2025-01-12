@@ -121,10 +121,11 @@
 
 
 
-* ### Implementation des commandes locales :
-   *  `my-sed` : // a completer
-   *  `my-tr` : // a completer
-   * `my-wlc` : // a completer
+* ### Implémentation des commandes locales :
+* **`my-sed`** : Remplace ou supprime un caractère spécifique dans un fichier donné.
+* **`my-tr`** : Remplace ou supprime un caractère spécifique dans un flux d'entrée standard.
+* **`my-wc`** : Compte le nombre de lignes et d'octets dans un fichier ou l'entrée standard.
+
 
 * ### Implementation des commandes internes :
    *  `exit` : quitte le shell avec un code de retour.Si un argument est donné, c'est le code de retour. Sinon on utilise last_status (le dernier statut de commande). Syntaxe : exit [VAL]
