@@ -64,7 +64,11 @@ char** parse_input(char* line) {
     return args;
 }
 
-// cutout_commands découpe les commandes séparées par des ;
+/**
+ * Découpe les commandes successives séparées par le caractère `;`.
+ * Chaque commande est stockée dans un tableau de chaînes de caractères.
+ * Utilisé pour exécuter des commandes multiples.
+ */
 char*** cutout_commands(char** args) {
     int size = INITIAL_SIZE;
     // Allocate memory for the commands 2D array
