@@ -140,6 +140,7 @@
 
 
 ## Dépendances et Bibliothèques Externes :
-Ce projet ne dépend d'aucune bibliothèque externe. Il utilise les bibliothèques standards du C.
+Ce projet n'utilise que les bibliothèques standards du C (`unistd.h`, `fcntl.h`, `stdio.h`, etc.).
+Aucune dépendance externe n'est requise pour la compilation.
 
 
