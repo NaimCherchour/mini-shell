@@ -381,7 +381,12 @@ int handle_pipes(char *line) {
         char *end = token + strlen(token) - 1;
         while (end > token && *end == ' ') *end-- = '\0'; // Supprimer les espaces à la fin
         commands[num_commands++] = strdup(token);
+        if (commands[num_commands - 1] == NULL) {
+            perror("strdup");
+            exit(EXIT_FAILURE);
+        }
         token = strtok(NULL, "|");
+
     }
     commands[num_commands] = NULL; // Terminaison
 
