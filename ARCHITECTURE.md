@@ -5,8 +5,8 @@
 
 📦mini-shell  
 
-┣ 📂bin/ ------------------------------------> Contient les binaires executables pour les commandes locales.  
-┣ 📂obj/ -----------------------------------> Contient les fichiers .o┃
+┣ 📂bin/ ------------------------------------> Contient les exécutables des commandes locales (`my-sed`, `my-tr`, `my-wc`).
+┣ 📂obj/ -----------------------------------> Contient les fichiers objets compilés (.o) générés à partir des fichiers sources.
 ┣ 📂headers/ --------------------------------> Contient les fichiers d'en-tête  
 ┃   ┃ ┣ prompt.h
 ┃   ┃ ┣ internals.h
@@ -45,8 +45,12 @@
 	•	Un prompt dynamique indiquant le répertoire courant et la valeur de retour de la dernière commande
 * ### Principe de fonctionnement :
 	1.	Lecture de la ligne de commande :
-	•	Le shell lit une ligne entrée par l’utilisateur.
-	•	La ligne est analysée pour détecter les redirections, cmd structurées (for, if-else), et commandes internes/externes.
+	Le shell lit une ligne entrée par l’utilisateur via `readline`.
+   La ligne est analysée pour :
+   - Détecter les redirections (`<`, `>`, `>>`, `2>`).
+   - Identifier les commandes structurées (`for`, `if-else`).
+   - Différencier les commandes internes (`cd`, `pwd`, `ftype`, `exit`) des commandes externes.
+
 	2.	Parsing et traitement :
 	•	La ligne est découpée en commandes individuelles grâce à cutout_commands.
 	•	Les redirections sont détectées et extraites via detect_redirections, et leur application est effectuée par apply_redirection.
