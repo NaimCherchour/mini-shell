@@ -94,6 +94,10 @@ int do_wc(int in_fd, int out_fd, int write_newlines, int write_bytes, const char
     /* lire l'entrée et compter le nombre de retours à la ligne et 
      * d'octets */
     ssize_t bytes_read = read(in_fd, buffer, BUFFER_SIZE);
+    if (bytes_read == 0) {
+    write(STDOUT_FILENO, "Le fichier est vide\n", 20);
+    goto cleanup_return;
+    }
     if (bytes_read == -1) {
       perror("read");
       result = 1;
