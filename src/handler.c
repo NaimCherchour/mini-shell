@@ -434,5 +434,12 @@ int handle_pipes(char *line) {
         free(commands[i]);
     }
 
+    // On Normalise le statut de retour
+    if (WIFEXITED(status)) {
+        status = WEXITSTATUS(status);
+    } else if (WIFSIGNALED(status)) {
+        status = 128 + WTERMSIG(status);
+    }
+
     return status;
 }

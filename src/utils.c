@@ -551,8 +551,8 @@ int for_loop(char **command) {
 }
 
 // Vérifie si la condition 'TEST' est un pipeline valide
-bool is_valid_test_condition(char **test_cmd_tokens, int token_count) {
-    if (strcmp(test_cmd_tokens[0], "if") == 0 || strcmp(test_cmd_tokens[0], "for") == 0)   {
+bool is_valid_test_condition(char **test_cmd_token, int start_index) {
+    if (strcmp(test_cmd_token[start_index], "if") == 0 || strcmp(test_cmd_token[start_index], "for") == 0)   {
         return false;
     } else {
         return true;
@@ -594,27 +594,32 @@ int if_else(char** command) {
     }
 
     // Extraction des tokens de la condition
-    int test_token_count = test_end - test_start + 1; //Nombre de tokens dans la condition
-    char **test_cmd = malloc((test_token_count + 1) * sizeof(char *));
+    //int test_token_count = test_end - test_start + 1;
+
+    int total_length = 0;
+    for (int j = test_start; j <= test_end; j++) {
+        total_length += strlen(command[j]) + 1;
+    }   
+    char *test_cmd = malloc(total_length * sizeof(char));
     if (!test_cmd) {
         perror("malloc");
         exit(EXIT_FAILURE);
     }
-    for (int j = test_start, k = 0; j <= test_end; j++, k++) {
-        test_cmd[k] = strdup(command[j]);
+
+    test_cmd[0] = '\0';
+    for (int j = test_start; j <= test_end; j++) {
+        strcat(test_cmd, command[j]);
+        if (j < test_end) {
+            strcat(test_cmd, " ");
+        }
     }
-    test_cmd[test_token_count] = NULL;
 
     //si TEST est une commande structurée
-    if (!is_valid_test_condition(test_cmd, test_token_count)) {
+    if (!is_valid_test_condition(command,test_start)) {
         write(STDERR_FILENO, "Fonctionnalité non gérée: 'TEST' ne peut pas contenir de commandes structurées\n", 83);
-        // Libération de la mémoire
-        for (int k = 0; k < test_token_count; k++) {
-            free(test_cmd[k]);
-        }
         free(test_cmd);
         return 2;
-    }
+    } 
 
     i++; // Passer '{'
     int cmd_start = i;
@@ -636,9 +641,6 @@ int if_else(char** command) {
     if (brace_count != 0) {
         write(STDERR_FILENO, "Erreur de syntaxe : accolades manquantes ou mal placées dans le bloc 'if'.\n", 76);
         // Libération de la mémoire
-        for (int k = 0; test_cmd[k] != NULL; k++) {
-            free(test_cmd[k]);
-        }
         free(test_cmd);
         return 2;
     }
@@ -660,9 +662,6 @@ int if_else(char** command) {
         if (command[i] == NULL || strcmp(command[i], "{") != 0) {
             write(STDERR_FILENO, "Erreur de syntaxe : '{' manquant après 'else'.\n", 48);
             free(cmd_if_str);
-            for (int k = 0; test_cmd[k] != NULL; k++) {
-                free(test_cmd[k]);
-            }
             free(test_cmd);
             return 2;
         }
@@ -687,9 +686,6 @@ int if_else(char** command) {
         if (brace_count != 0) {
             write(STDERR_FILENO, "Erreur de syntaxe : accolades manquantes ou mal placées dans le bloc 'else'.\n", 75);
             free(cmd_if_str);
-            for (int k = 0; test_cmd[k] != NULL; k++) {
-                free(test_cmd[k]);
-            }
             free(test_cmd);
             return 2;
         }
@@ -710,22 +706,16 @@ int if_else(char** command) {
         if (has_else) {
             free(cmd_else_str);
         }
-        for (int k = 0; test_cmd[k] != NULL; k++) {
-            free(test_cmd[k]);
-        }
         free(test_cmd);
         return 2;
     }
 
-    // Exécution de la commande de test sans afficher la sortie
-    int test_result = execute_command(test_cmd);
+    // Exécution de la commande de test
+    int test_result = execute_block(test_cmd);
 
     //Si execute_command retourne une erreur de syntaxe
     if (test_result == 2) {
         // Libération de la mémoire
-        for (int k = 0; test_cmd[k] != NULL; k++) {
-            free(test_cmd[k]);
-            }
         free(test_cmd);
         free(cmd_if_str);
         if (has_else) {
@@ -735,9 +725,6 @@ int if_else(char** command) {
     }
 
     // Libération de la mémoire des tokens de test
-    for (int k = 0; test_cmd[k] != NULL; k++) {
-        free(test_cmd[k]);
-    }
     free(test_cmd);
 
     int return_val = 0;
