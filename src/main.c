@@ -65,10 +65,12 @@ int main() {
         char* line = readline(prompt); // line contient la commande entrée par l'utilisateur
         free(prompt); // On libère la mémoire allouée pour le prompt
 
+        
         if (line == NULL) {
-            // Si line est NULL (EOF ou erreur), On quitte la boucle
-            exit_shell(NULL);  // exit avec last_status 
+            fprintf(stderr, "Erreur : entrée utilisateur invalide ou EOF détecté.\n");
+            exit_shell(NULL);
         }
+
 
         if (strlen(line) > 0) {
             add_history(line); // On ajoute la commande à l'historique
