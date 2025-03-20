@@ -1,6 +1,8 @@
 # fsh
 Shell written in C. The goal is to make a mini shell handling for loops, if condition jumps, commands piping and offer some builtin commands.
 
+![FSH](https://github.com/user-attachments/assets/88a709ef-8835-4fc4-95c3-079580325eb9)
+
 ## Quick Start
 
 * Clone the repo
